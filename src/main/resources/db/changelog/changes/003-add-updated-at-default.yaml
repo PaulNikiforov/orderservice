@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-updated-at-default-items
+      author: dev
+      changes:
+        - addDefaultValue:
+            tableName: items
+            columnName: updated_at
+            defaultValueComputed: "now()"

@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-items-name-unique-constraint
+      author: dev
+      changes:
+        - addUniqueConstraint:
+            tableName: items
+            columnNames: name
+            constraintName: uk_items_name
