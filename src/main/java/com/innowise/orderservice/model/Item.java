@@ -2,11 +2,13 @@ package com.innowise.orderservice.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "items")
+@BatchSize(size = 10)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -17,9 +17,26 @@
 		<java.version>21</java.version>
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
+		<mockito.version>5.17.0</mockito.version>
 		<resilience4j.version>2.4.0</resilience4j.version>
 		<springdoc.version>2.8.8</springdoc.version>
 		<wiremock.version>3.13.2</wiremock.version>
+		<sonar.version>5.6.0.6792</sonar.version>
+		<jacocoArgLine></jacocoArgLine>
+		<sonar.projectKey>PaulNikiforov_orderservice</sonar.projectKey>
+		<sonar.organization>paulnikiforov</sonar.organization>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.coverage.exclusions>
+			**/Application.java,
+			**/config/**,
+			**/model/**,
+			**/exception/**,
+			**/util/**,
+			**/kafka/**,
+			**/target/generated-sources/**
+		</sonar.coverage.exclusions>
+		<sonar.scanner.skipJreProvisioning>true</sonar.scanner.skipJreProvisioning>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -182,6 +199,55 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>@{jacocoArgLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<argLine>@{jacocoArgLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.12</version>
+				<executions>
+					<execution>
+						<configuration>
+							<propertyName>jacocoArgLine</propertyName>
+						</configuration>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>${sonar.version}</version>
 			</plugin>
 		</plugins>
 	</build>

@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-add-order-items-unique-constraint
+      author: dev
+      changes:
+        - addUniqueConstraint:
+            tableName: order_items
+            columnNames: order_id, item_id
+            constraintName: uk_order_items_order_item
+
+  - changeSet:
+      id: 005-add-check-orders-total-price
+      author: dev
+      changes:
+        - sql:
+            sql: ALTER TABLE orders ADD CONSTRAINT chk_orders_total_price_non_negative CHECK (total_price >= 0)
+      rollback:
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT chk_orders_total_price_non_negative
+
+  - changeSet:
+      id: 005-add-check-order-items-quantity
+      author: dev
+      changes:
+        - sql:
+            sql: ALTER TABLE order_items ADD CONSTRAINT chk_order_items_quantity_positive CHECK (quantity > 0)
+      rollback:
+        - sql:
+            sql: ALTER TABLE order_items DROP CONSTRAINT chk_order_items_quantity_positive
+
+  - changeSet:
+      id: 005-add-default-orders-deleted
+      author: dev
+      changes:
+        - addDefaultValue:
+            tableName: orders
+            columnName: deleted
+            defaultValueBoolean: false

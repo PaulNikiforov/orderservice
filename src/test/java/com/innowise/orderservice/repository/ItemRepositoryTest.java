@@ -14,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(com.innowise.orderservice.TestcontainersConfiguration.class)
+@Import({com.innowise.orderservice.TestcontainersConfiguration.class,
+        com.innowise.orderservice.config.JpaAuditingConfig.class})
 @ActiveProfiles("test")
 class ItemRepositoryTest {
 
