@@ -28,9 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,16 +62,11 @@ class OrderQueryServiceTest {
         return new OrderWithUserDto(null, status, new BigDecimal("100.00"), List.of(), null, null, user);
     }
 
-    private UserDto stubUser(Long id) {
-        return new UserDto(id, "user@example.com", "John", "Doe");
-    }
-
     @Test
     void getById_returnsOrderWithUser() {
         Order order = order(42L, OrderStatus.PENDING);
         var expected = orderWithUserDto(42L, OrderStatus.PENDING);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(userServiceClient.getUserById(42L)).thenReturn(stubUser(42L));
         when(orderMapper.toWithUserDto(any(), any())).thenReturn(expected);
 
         var result = orderService.getById(1L);
@@ -96,7 +89,6 @@ class OrderQueryServiceTest {
         var orders = List.of(order(1L, OrderStatus.PENDING), order(2L, OrderStatus.CONFIRMED));
         var page = new PageImpl<>(orders, PageRequest.of(0, 10), 2);
         when(orderRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
-        when(userServiceClient.getUserById(anyLong())).thenReturn(stubUser(1L));
         when(orderMapper.toWithUserDto(any(), any()))
                 .thenReturn(orderWithUserDto(1L, OrderStatus.PENDING))
                 .thenReturn(orderWithUserDto(2L, OrderStatus.CONFIRMED));
@@ -113,7 +105,6 @@ class OrderQueryServiceTest {
         var orders = List.of(order(1L, OrderStatus.CONFIRMED));
         var page = new PageImpl<>(orders, PageRequest.of(0, 10), 1);
         when(orderRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
-        when(userServiceClient.getUserById(anyLong())).thenReturn(stubUser(1L));
         when(orderMapper.toWithUserDto(any(), any())).thenReturn(orderWithUserDto(1L, OrderStatus.CONFIRMED));
 
         var filter = new OrderFilterRequest(null, OrderStatus.CONFIRMED, null, null);
@@ -129,7 +120,6 @@ class OrderQueryServiceTest {
         var orders = List.of(order(1L, OrderStatus.PENDING));
         var page = new PageImpl<>(orders, PageRequest.of(0, 10), 1);
         when(orderRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
-        when(userServiceClient.getUserById(anyLong())).thenReturn(stubUser(1L));
         when(orderMapper.toWithUserDto(any(), any())).thenReturn(orderWithUserDto(1L, OrderStatus.PENDING));
 
         var filter = new OrderFilterRequest(null, null, now.minusDays(1), now.plusDays(1));
@@ -154,7 +144,6 @@ class OrderQueryServiceTest {
     void getByUserId_returnsAllUserOrders() {
         var orders = List.of(order(5L, OrderStatus.PENDING), order(5L, OrderStatus.CONFIRMED));
         when(orderRepository.findAll(any(Specification.class))).thenReturn(orders);
-        when(userServiceClient.getUserById(5L)).thenReturn(stubUser(5L));
         when(orderMapper.toWithUserDto(any(), any()))
                 .thenReturn(orderWithUserDto(5L, OrderStatus.PENDING))
                 .thenReturn(orderWithUserDto(5L, OrderStatus.CONFIRMED));
@@ -162,17 +151,14 @@ class OrderQueryServiceTest {
         var result = orderService.getByUserId(5L);
 
         assertThat(result).hasSize(2);
-        verify(userServiceClient, times(1)).getUserById(5L);
     }
 
     @Test
     void getByUserId_returnsEmpty_whenNoOrders() {
         when(orderRepository.findAll(any(Specification.class))).thenReturn(List.of());
-        when(userServiceClient.getUserById(999L)).thenReturn(stubUser(999L));
 
         var result = orderService.getByUserId(999L);
 
         assertThat(result).isEmpty();
-        verify(userServiceClient, times(1)).getUserById(999L);
     }
 }

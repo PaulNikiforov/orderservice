@@ -5,6 +5,7 @@ import com.innowise.orderservice.dto.CreateOrderRequest;
 import com.innowise.orderservice.dto.OrderDto;
 import com.innowise.orderservice.dto.OrderWithUserDto;
 import com.innowise.orderservice.dto.UpdateOrderRequest;
+import com.innowise.orderservice.dto.UserDto;
 import com.innowise.orderservice.exception.ItemNotFoundException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
 import com.innowise.orderservice.mapper.OrderMapper;
@@ -87,6 +88,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderWithUserDto> getAll(OrderFilterRequest filter, Pageable pageable) {
+        // TODO: N+1 HTTP calls — each order triggers getUserById; deduplicate by userId before enrichment
         return orderRepository.findAll(OrderSpecification.fromFilter(filter), pageable)
                 .map(this::enrichWithUser);
     }
@@ -94,14 +96,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public List<OrderWithUserDto> getByUserId(Long userId) {
-        var user = userServiceClient.getUserById(userId);
+        UserDto user = userServiceClient.getUserById(userId);
         return orderRepository.findAll(OrderSpecification.hasUserId(userId)).stream()
                 .map(order -> orderMapper.toWithUserDto(order, user))
                 .toList();
     }
 
     private OrderWithUserDto enrichWithUser(Order order) {
-        return orderMapper.toWithUserDto(order, userServiceClient.getUserById(order.getUserId()));
+        UserDto user = userServiceClient.getUserById(order.getUserId());
+        return orderMapper.toWithUserDto(order, user);
     }
 
     private Order findOrderOrThrow(Long id) {
