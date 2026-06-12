@@ -1,6 +1,6 @@
 package com.innowise.orderservice.exception;
 
-public class OrderNotFoundException extends RuntimeException {
+public class OrderNotFoundException extends ResourceNotFoundException {
 
     public OrderNotFoundException(String message) {
         super(message);

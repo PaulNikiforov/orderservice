@@ -17,7 +17,8 @@ import com.innowise.orderservice.repository.ItemRepository;
 import com.innowise.orderservice.repository.OrderRepository;
 import com.innowise.orderservice.repository.specification.OrderFilterRequest;
 import com.innowise.orderservice.repository.specification.OrderSpecification;
-import com.innowise.orderservice.service.OrderService;
+import com.innowise.orderservice.service.OrderCommandService;
+import com.innowise.orderservice.service.OrderQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,11 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class OrderServiceImpl implements OrderService {
+public class OrderServiceImpl implements OrderCommandService, OrderQueryService {
 
     private final OrderRepository orderRepository;
     private final ItemRepository itemRepository;
@@ -66,10 +68,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderDto update(Long id, UpdateOrderRequest request) {
+    public OrderWithUserDto update(Long id, UpdateOrderRequest request) {
         Order order = findOrderOrThrow(id);
         order.setStatus(request.status());
-        return orderMapper.toDto(order);
+        return enrichWithUser(order);
     }
 
     @Override
@@ -88,18 +90,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderWithUserDto> getAll(OrderFilterRequest filter, Pageable pageable) {
-        // TODO: N+1 HTTP calls — each order triggers getUserById; deduplicate by userId before enrichment
-        return orderRepository.findAll(OrderSpecification.fromFilter(filter), pageable)
-                .map(this::enrichWithUser);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<OrderWithUserDto> getByUserId(Long userId) {
-        UserDto user = userServiceClient.getUserById(userId);
-        return orderRepository.findAll(OrderSpecification.hasUserId(userId)).stream()
-                .map(order -> orderMapper.toWithUserDto(order, user))
-                .toList();
+        Page<Order> page = orderRepository.findAll(OrderSpecification.fromFilter(filter), pageable);
+        Map<Long, UserDto> userCache = new HashMap<>();
+        page.getContent().stream()
+                .map(Order::getUserId)
+                .distinct()
+                .forEach(uid -> userCache.put(uid, userServiceClient.getUserById(uid)));
+        return page.map(order -> orderMapper.toWithUserDto(order, userCache.get(order.getUserId())));
     }
 
     private OrderWithUserDto enrichWithUser(Order order) {

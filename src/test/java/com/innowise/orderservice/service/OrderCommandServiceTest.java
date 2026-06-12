@@ -1,5 +1,6 @@
 package com.innowise.orderservice.service;
 
+import com.innowise.orderservice.client.UserServiceClient;
 import com.innowise.orderservice.dto.CreateOrderRequest;
 import com.innowise.orderservice.dto.OrderItemRequest;
 import com.innowise.orderservice.dto.UpdateOrderRequest;
@@ -39,6 +40,9 @@ class OrderCommandServiceTest {
 
     @Mock
     private OrderMapper orderMapper;
+
+    @Mock
+    private UserServiceClient userServiceClient;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -115,7 +119,7 @@ class OrderCommandServiceTest {
         Order order = new Order();
         order.setStatus(OrderStatus.PENDING);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(null);
+        when(orderMapper.toWithUserDto(any(Order.class), any())).thenReturn(null);
 
         orderService.update(1L, new UpdateOrderRequest(OrderStatus.CONFIRMED));
 

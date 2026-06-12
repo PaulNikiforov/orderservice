@@ -140,25 +140,4 @@ class OrderQueryServiceTest {
         assertThat(result.getTotalElements()).isZero();
     }
 
-    @Test
-    void getByUserId_returnsAllUserOrders() {
-        var orders = List.of(order(5L, OrderStatus.PENDING), order(5L, OrderStatus.CONFIRMED));
-        when(orderRepository.findAll(any(Specification.class))).thenReturn(orders);
-        when(orderMapper.toWithUserDto(any(), any()))
-                .thenReturn(orderWithUserDto(5L, OrderStatus.PENDING))
-                .thenReturn(orderWithUserDto(5L, OrderStatus.CONFIRMED));
-
-        var result = orderService.getByUserId(5L);
-
-        assertThat(result).hasSize(2);
-    }
-
-    @Test
-    void getByUserId_returnsEmpty_whenNoOrders() {
-        when(orderRepository.findAll(any(Specification.class))).thenReturn(List.of());
-
-        var result = orderService.getByUserId(999L);
-
-        assertThat(result).isEmpty();
-    }
 }
