@@ -1,0 +1,59 @@
+services:
+
+  order-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orderservice
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"           # 5433 on host to avoid clash with a local Postgres on 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orderservice"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka-native:3.8.0
+    restart: unless-stopped
+    # Kafka-состояние намеренно ephemeral (без volume): для локальной разработки
+    # переобработка событий после перезапуска приемлема, а монтирование volume к
+    # native-образу чревато проблемами прав доступа к data-каталогу.
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+
+  orderservice:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      order-db:
+        condition: service_healthy
+      kafka:
+        # service_started (НЕ service_healthy): Spring Kafka consumer переподключается
+        # к брокеру сам, а у native-образа нет надёжного shell-healthcheck
+        # (kafka-topics.sh может отсутствовать). Иначе стек завис бы на ожидании Kafka.
+        condition: service_started
+
+volumes:
+  postgres_data:
