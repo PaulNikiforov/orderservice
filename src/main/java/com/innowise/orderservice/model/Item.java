@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @NoArgsConstructor
-@EqualsAndHashCode(of = {"name"}, callSuper = false)
+@EqualsAndHashCode(of = {"id"}, callSuper = false)
 public class Item extends BaseEntity {
 
     @Id

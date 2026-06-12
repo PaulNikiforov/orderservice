@@ -1,4 +1,3 @@
-// FILE: src/test/java/com/innowise/orderservice/client/UserServiceClientTest.java
 package com.innowise.orderservice.client;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -22,17 +21,6 @@ class UserServiceClientTest {
         wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
         wireMockServer.start();
 
-        wireMockServer.stubFor(
-                get(urlPathEqualTo("/api/users/by-email"))
-                        .withQueryParam("email", equalTo("test@test.com"))
-                        .willReturn(aResponse()
-                                .withStatus(200)
-                                .withHeader("Content-Type", "application/json")
-                                .withBody("""
-                                        {"id":1,"email":"test@test.com","name":"John","surname":"Doe"}
-                                        """))
-        );
-
         RestClient restClient = RestClient.builder()
                 .baseUrl("http://localhost:" + wireMockServer.port())
                 .build();
@@ -46,30 +34,6 @@ class UserServiceClientTest {
     }
 
     @Test
-    void getUserByEmail_shouldReturnUserDto_whenUserExists() {
-        UserDto result = client.getUserByEmail("test@test.com");
-
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.name()).isEqualTo("John");
-        assertThat(result.surname()).isEqualTo("Doe");
-    }
-
-    @Test
-    void getUserByEmail_shouldReturnNull_whenServiceResponds500() {
-        wireMockServer.stubFor(
-                get(urlPathEqualTo("/api/users/by-email"))
-                        .withQueryParam("email", equalTo("test@test.com"))
-                        .willReturn(aResponse()
-                                .withStatus(500))
-        );
-
-        UserDto result = client.getUserByEmail("test@test.com");
-
-        assertThat(result).isNull();
-    }
-
-    @Test
     void getUserById_shouldReturnUserDto_whenUserExists() {
         wireMockServer.stubFor(
                 get(urlEqualTo("/api/users/1"))
@@ -78,8 +42,7 @@ class UserServiceClientTest {
                                 .withHeader("Content-Type", "application/json")
                                 .withBody("""
                                         {"id":1,"email":"test@test.com","name":"John","surname":"Doe"}
-                                        """))
-        );
+                                        """)));
 
         UserDto result = client.getUserById(1L);
 
@@ -92,9 +55,7 @@ class UserServiceClientTest {
     void getUserById_shouldReturnNull_whenServiceResponds404() {
         wireMockServer.stubFor(
                 get(urlEqualTo("/api/users/99"))
-                        .willReturn(aResponse()
-                                .withStatus(404))
-        );
+                        .willReturn(aResponse().withStatus(404)));
 
         UserDto result = client.getUserById(99L);
 
@@ -102,30 +63,22 @@ class UserServiceClientTest {
     }
 
     @Test
-    void getUserByEmail_shouldReturnNull_whenServiceUnavailable() {
-        RestClient unreachableRestClient = RestClient.builder()
-                .baseUrl("http://localhost:19999")
-                .build();
-        UserServiceClient unreachableClient = new UserServiceClientImpl(unreachableRestClient);
+    void getUserById_shouldReturnNull_whenServiceResponds500() {
+        wireMockServer.stubFor(
+                get(urlEqualTo("/api/users/1"))
+                        .willReturn(aResponse().withStatus(500)));
 
-        UserDto result = unreachableClient.getUserByEmail("test@test.com");
+        UserDto result = client.getUserById(1L);
 
         assertThat(result).isNull();
     }
 
     @Test
-    void getUserByEmail_shouldReturnNull_fallbackIsStableUnderRepeatedFailures() {
-        wireMockServer.stubFor(
-                get(urlPathEqualTo("/api/users/by-email"))
-                        .withQueryParam("email", equalTo("test@test.com"))
-                        .willReturn(aResponse()
-                                .withStatus(500))
-        );
-
-        UserDto result = null;
-        for (int i = 0; i < 5; i++) {
-            result = client.getUserByEmail("test@test.com");
-        }
+    void getUserById_shouldReturnNull_whenServiceUnavailable() {
+        RestClient unreachable = RestClient.builder()
+                .baseUrl("http://localhost:19999")
+                .build();
+        UserDto result = new UserServiceClientImpl(unreachable).getUserById(1L);
 
         assertThat(result).isNull();
     }

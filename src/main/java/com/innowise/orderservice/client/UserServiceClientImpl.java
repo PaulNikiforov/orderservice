@@ -17,14 +17,6 @@ public class UserServiceClientImpl implements UserServiceClient {
     private final RestClient restClient;
 
     @Override
-    public UserDto getUserByEmail(String email) {
-        return fetch(() -> restClient.get()
-                .uri("/api/users/by-email?email={email}", email)
-                .retrieve()
-                .body(UserDto.class));
-    }
-
-    @Override
     public UserDto getUserById(Long userId) {
         return fetch(() -> restClient.get()
                 .uri("/api/users/{id}", userId)

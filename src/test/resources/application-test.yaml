@@ -4,3 +4,9 @@ spring:
       ddl-auto: validate
   liquibase:
     enabled: true
+
+# Fallback for OrderserviceApplicationTests (contextLoads smoke test only).
+# @SpringBootTest integration tests override this via @DynamicPropertySource with the actual WireMock port.
+# DB connection is provided by @ServiceConnection (Testcontainers) — explicit datasource URL/credentials are not required here.
+user-service:
+  url: http://localhost:9999

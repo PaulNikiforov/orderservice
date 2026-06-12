@@ -91,6 +91,7 @@ public class OrderServiceImpl implements OrderCommandService, OrderQueryService 
     @Transactional(readOnly = true)
     public Page<OrderWithUserDto> getAll(OrderFilterRequest filter, Pageable pageable) {
         Page<Order> page = orderRepository.findAll(OrderSpecification.fromFilter(filter), pageable);
+        // HashMap allows null values — getUserById returns null when UserService is unavailable (graceful degradation)
         Map<Long, UserDto> userCache = new HashMap<>();
         page.getContent().stream()
                 .map(Order::getUserId)
