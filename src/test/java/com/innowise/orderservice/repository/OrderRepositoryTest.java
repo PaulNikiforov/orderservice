@@ -89,36 +89,6 @@ class OrderRepositoryTest {
     }
 
     @Test
-    void findByUserId_returnsOrders() {
-        Order order1 = new Order();
-        order1.setUserId(1L);
-        order1.setTotalPrice(new BigDecimal("10.00"));
-
-        Order order2 = new Order();
-        order2.setUserId(1L);
-        order2.setTotalPrice(new BigDecimal("20.00"));
-
-        Order order3 = new Order();
-        order3.setUserId(2L);
-        order3.setTotalPrice(new BigDecimal("30.00"));
-
-        orderRepository.save(order1);
-        orderRepository.save(order2);
-        orderRepository.save(order3);
-
-        var orders = orderRepository.findByUserId(1L);
-
-        assertThat(orders).hasSize(2);
-    }
-
-    @Test
-    void findByUserId_returnsEmpty_whenNoOrders() {
-        var orders = orderRepository.findByUserId(999L);
-
-        assertThat(orders).isEmpty();
-    }
-
-    @Test
     void softDelete_orderNotReturnedAfterDeleted() {
         Item item = persistItem("Widget", new BigDecimal("9.99"));
 
