@@ -1,13 +1,11 @@
 package com.innowise.orderservice.client;
 
 import com.innowise.orderservice.dto.UserDto;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-
-import java.util.function.Supplier;
 
 @Slf4j
 @Component
@@ -16,20 +14,18 @@ public class UserServiceClientImpl implements UserServiceClient {
 
     private final RestClient restClient;
 
+    @CircuitBreaker(name = "userService", fallbackMethod = "fallback")
     @Override
     public UserDto getUserById(Long userId) {
-        return fetch(() -> restClient.get()
+        return restClient.get()
                 .uri("/api/users/{id}", userId)
                 .retrieve()
-                .body(UserDto.class));
+                .body(UserDto.class);
     }
 
-    private UserDto fetch(Supplier<UserDto> call) {
-        try {
-            return call.get();
-        } catch (RestClientException e) {
-            log.warn("UserService call failed: {}", e.getMessage());
-            return null;
-        }
+    @SuppressWarnings("unused")
+    private UserDto fallback(Long userId, Throwable t) {
+        log.warn("UserService unavailable for userId={}: {}", userId, t.getMessage());
+        return null;
     }
 }

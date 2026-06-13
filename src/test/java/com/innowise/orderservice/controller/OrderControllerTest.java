@@ -54,8 +54,6 @@ class OrderControllerTest {
                 List.of(), LocalDateTime.now(), LocalDateTime.now(), user);
     }
 
-    // ── POST /api/v1/orders ──────────────────────────────────────────────────
-
     @Test
     void create_returns201_withValidRequest() throws Exception {
         when(commandService.create(any(CreateOrderRequest.class))).thenReturn(orderDto());
@@ -94,8 +92,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.status").value(404));
     }
 
-    // ── GET /api/v1/orders/{id} ──────────────────────────────────────────────
-
     @Test
     void getById_returns200_withOrderData() throws Exception {
         when(queryService.getById(1L)).thenReturn(orderWithUserDto());
@@ -114,8 +110,6 @@ class OrderControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Order not found with id: 99"));
     }
-
-    // ── GET /api/v1/orders ───────────────────────────────────────────────────
 
     @Test
     void getAll_returns200_withDefaultPagination() throws Exception {
@@ -148,8 +142,6 @@ class OrderControllerTest {
                         .param("createdTo", "2026-12-31T23:59:59"))
                 .andExpect(status().isOk());
     }
-
-    // ── PUT /api/v1/orders/{id} ──────────────────────────────────────────────
 
     @Test
     void update_returns200_withUpdatedStatus() throws Exception {
@@ -188,8 +180,6 @@ class OrderControllerTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
-
-    // ── DELETE /api/v1/orders/{id} ───────────────────────────────────────────
 
     @Test
     void delete_returns204_onSuccess() throws Exception {

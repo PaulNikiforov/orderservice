@@ -1,4 +1,3 @@
-// FILE: src/test/java/com/innowise/orderservice/repository/OrderRepositoryTest.java
 package com.innowise.orderservice.repository;
 
 import com.innowise.orderservice.TestcontainersConfiguration;

@@ -1,4 +1,3 @@
-// FILE: src/main/java/com/innowise/orderservice/exception/GlobalExceptionHandler.java
 package com.innowise.orderservice.exception;
 
 import com.innowise.orderservice.dto.ErrorResponse;

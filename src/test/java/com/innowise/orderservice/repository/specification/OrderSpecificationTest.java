@@ -45,8 +45,6 @@ class OrderSpecificationTest {
         Order order = createOrder(userId, totalPrice);
         entityManager.persist(order);
         entityManager.flush();
-        // Bypass @CreatedDate immutability — JPQL bulk update skips persistence context,
-        // so clear() is mandatory to avoid stale cached state
         entityManager.getEntityManager()
                 .createQuery("UPDATE Order o SET o.createdAt = :ts WHERE o.id = :id")
                 .setParameter("ts", createdAt)
@@ -208,5 +206,32 @@ class OrderSpecificationTest {
         var found = orderRepository.findAll(OrderSpecification.fromFilter(filter));
 
         assertThat(found).hasSize(2);
+    }
+
+    @Test
+    void findAll_dateRange_isInclusiveOnBoundaries() {
+        LocalDateTime boundary = LocalDateTime.now().minusDays(1).withNano(0);
+        persistWithCreatedAt(1L, new BigDecimal("10.00"), boundary);
+
+        var spec = Specification.where(OrderSpecification.createdAfter(boundary))
+                .and(OrderSpecification.createdBefore(boundary));
+        var found = orderRepository.findAll(spec);
+
+        assertThat(found).hasSize(1);
+    }
+
+    @Test
+    void findAll_pagination_excludesSoftDeletedFromTotalElements() {
+        Order o1 = createOrder(1L, new BigDecimal("10.00"));
+        Order o2 = createOrder(1L, new BigDecimal("20.00"));
+        Order deleted = createOrder(1L, new BigDecimal("30.00"));
+        deleted.setDeleted(true);
+        saveFlushAndClear(o1, o2, deleted);
+
+        Page<Order> page = orderRepository.findAll(
+                OrderSpecification.hasUserId(1L), PageRequest.of(0, 10));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent()).hasSize(2);
     }
 }
