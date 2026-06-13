@@ -1,6 +1,6 @@
 package com.innowise.orderservice.client;
 
-import com.innowise.orderservice.dto.UserDto;
+import com.innowise.orderservice.model.dto.UserDto;
 
 /**
  * Client for the external User Service. Implementations are expected to degrade

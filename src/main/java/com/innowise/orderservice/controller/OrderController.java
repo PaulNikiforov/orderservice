@@ -1,9 +1,9 @@
 package com.innowise.orderservice.controller;
 
-import com.innowise.orderservice.dto.CreateOrderRequest;
-import com.innowise.orderservice.dto.OrderDto;
-import com.innowise.orderservice.dto.OrderWithUserDto;
-import com.innowise.orderservice.dto.UpdateOrderRequest;
+import com.innowise.orderservice.model.dto.CreateOrderRequest;
+import com.innowise.orderservice.model.dto.OrderDto;
+import com.innowise.orderservice.model.dto.OrderWithUserDto;
+import com.innowise.orderservice.model.dto.UpdateOrderRequest;
 import com.innowise.orderservice.model.OrderStatus;
 import com.innowise.orderservice.repository.specification.OrderFilterRequest;
 import com.innowise.orderservice.service.OrderCommandService;
@@ -70,6 +70,11 @@ public class OrderController {
      * Returns a page of orders filtered by the optional query parameters. Defaults to
      * 20 items per page, sorted by creation time descending.
      *
+     * @param userId      optional filter by owner user id
+     * @param status      optional filter by order status
+     * @param createdFrom optional lower bound (inclusive) of the creation timestamp
+     * @param createdTo   optional upper bound (inclusive) of the creation timestamp
+     * @param pageable    paging and sorting parameters
      * @return a page of orders with user info
      */
     @GetMapping

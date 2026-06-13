@@ -1,20 +1,20 @@
 package com.innowise.orderservice.service;
 
 import com.innowise.orderservice.client.UserServiceClient;
-import com.innowise.orderservice.dto.CreateOrderRequest;
-import com.innowise.orderservice.dto.OrderDto;
-import com.innowise.orderservice.dto.OrderItemRequest;
-import com.innowise.orderservice.dto.OrderWithUserDto;
-import com.innowise.orderservice.dto.UpdateOrderRequest;
 import com.innowise.orderservice.exception.ItemNotFoundException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
 import com.innowise.orderservice.mapper.OrderMapper;
 import com.innowise.orderservice.model.Item;
 import com.innowise.orderservice.model.Order;
 import com.innowise.orderservice.model.OrderStatus;
+import com.innowise.orderservice.model.dto.CreateOrderRequest;
+import com.innowise.orderservice.model.dto.OrderDto;
+import com.innowise.orderservice.model.dto.OrderItemRequest;
+import com.innowise.orderservice.model.dto.OrderWithUserDto;
+import com.innowise.orderservice.model.dto.UpdateOrderRequest;
 import com.innowise.orderservice.repository.ItemRepository;
 import com.innowise.orderservice.repository.OrderRepository;
-import com.innowise.orderservice.service.impl.OrderServiceImpl;
+import com.innowise.orderservice.service.impl.OrderCommandServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,12 +47,7 @@ class OrderCommandServiceTest {
     private UserServiceClient userServiceClient;
 
     @InjectMocks
-    private OrderServiceImpl orderService;
-
-    private static final OrderDto DUMMY_DTO =
-            new OrderDto(1L, 42L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null);
-    private static final OrderWithUserDto DUMMY_WITH_USER =
-            new OrderWithUserDto(1L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null, null);
+    private OrderCommandServiceImpl orderService;
 
     private Item item(Long id, BigDecimal price) {
         Item item = new Item();
@@ -65,9 +60,10 @@ class OrderCommandServiceTest {
     @Test
     void create_savesOrderWithCorrectTotalPrice() {
         Item item = item(1L, new BigDecimal("10.00"));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(DUMMY_DTO);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(
+                new OrderDto(1L, 42L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null));
 
         var request = new CreateOrderRequest(42L, List.of(new OrderItemRequest(1L, 3)));
         orderService.create(request);
@@ -80,9 +76,10 @@ class OrderCommandServiceTest {
     @Test
     void create_setsStatusPending() {
         Item item = item(1L, new BigDecimal("5.00"));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(DUMMY_DTO);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(
+                new OrderDto(1L, 1L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null));
 
         orderService.create(new CreateOrderRequest(1L, List.of(new OrderItemRequest(1L, 1))));
 
@@ -93,7 +90,7 @@ class OrderCommandServiceTest {
 
     @Test
     void create_throwsItemNotFoundException_whenItemNotExists() {
-        when(itemRepository.findById(99L)).thenReturn(Optional.empty());
+        when(itemRepository.findAllById(List.of(99L))).thenReturn(List.of());
 
         assertThatThrownBy(() -> orderService.create(
                 new CreateOrderRequest(1L, List.of(new OrderItemRequest(99L, 1)))))
@@ -105,10 +102,10 @@ class OrderCommandServiceTest {
     void create_createsOrderItemsForEachRequest() {
         Item item1 = item(1L, new BigDecimal("10.00"));
         Item item2 = item(2L, new BigDecimal("20.00"));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item1));
-        when(itemRepository.findById(2L)).thenReturn(Optional.of(item2));
+        when(itemRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(item1, item2));
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(DUMMY_DTO);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(
+                new OrderDto(1L, 1L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null));
 
         var request = new CreateOrderRequest(1L, List.of(
                 new OrderItemRequest(1L, 2),
@@ -126,7 +123,8 @@ class OrderCommandServiceTest {
         Order order = new Order();
         order.setStatus(OrderStatus.PENDING);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderMapper.toWithUserDto(any(Order.class), any())).thenReturn(DUMMY_WITH_USER);
+        when(orderMapper.toWithUserDto(any(Order.class), any())).thenReturn(
+                new OrderWithUserDto(1L, OrderStatus.CONFIRMED, new BigDecimal("0.00"), List.of(), null, null, null));
 
         orderService.update(1L, new UpdateOrderRequest(OrderStatus.CONFIRMED));
 

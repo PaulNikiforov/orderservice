@@ -4,25 +4,26 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: orderservice
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: UTC
+      PGTZ: UTC
     ports:
-      - "5433:5432"           # 5433 on host to avoid clash with a local Postgres on 5432
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d orderservice"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - order-net
 
   kafka:
     image: apache/kafka-native:3.8.0
     restart: unless-stopped
-    # Kafka-состояние намеренно ephemeral (без volume): для локальной разработки
-    # переобработка событий после перезапуска приемлема, а монтирование volume к
-    # native-образу чревато проблемами прав доступа к data-каталогу.
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -36,6 +37,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    networks:
+      - order-net
 
   orderservice:
     build: .
@@ -44,16 +47,23 @@ services:
       - "8082:8082"
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
+      DB_URL: jdbc:postgresql://order-db:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://userservice:8080}
+      TZ: UTC
     depends_on:
       order-db:
         condition: service_healthy
       kafka:
-        # service_started (НЕ service_healthy): Spring Kafka consumer переподключается
-        # к брокеру сам, а у native-образа нет надёжного shell-healthcheck
-        # (kafka-topics.sh может отсутствовать). Иначе стек завис бы на ожидании Kafka.
         condition: service_started
+    networks:
+      - order-net
 
 volumes:
   postgres_data:
+
+networks:
+  order-net:
+    driver: bridge

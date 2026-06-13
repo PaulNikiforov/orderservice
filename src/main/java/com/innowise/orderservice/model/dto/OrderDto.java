@@ -1,4 +1,4 @@
-package com.innowise.orderservice.dto;
+package com.innowise.orderservice.model.dto;
 
 import com.innowise.orderservice.model.OrderStatus;
 

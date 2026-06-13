@@ -1,8 +1,4 @@
 databaseChangeLog:
-  # Primary access pattern (plan task-04 §4): list a user's orders, optionally filtered by status.
-  # A composite (user_id, status) index serves both that query and user_id-only queries (leftmost
-  # prefix), making the standalone idx_orders_user_id redundant. The status-only and created_at
-  # indexes remain (not covered by the leftmost prefix).
   - changeSet:
       id: 006-replace-user-id-index-with-composite
       author: dev

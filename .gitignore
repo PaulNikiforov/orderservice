@@ -35,3 +35,4 @@ build/
 .claude
 *.md
 *.txt
+.env

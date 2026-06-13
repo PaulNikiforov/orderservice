@@ -48,6 +48,8 @@ springdoc:
 
 user-service:
   url: ${USER_SERVICE_URL}
+  connect-timeout: 2s
+  read-timeout: 5s
 
 resilience4j:
   circuitbreaker:

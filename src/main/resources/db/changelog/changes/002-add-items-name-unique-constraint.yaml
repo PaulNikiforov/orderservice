@@ -7,3 +7,7 @@ databaseChangeLog:
             tableName: items
             columnNames: name
             constraintName: uk_items_name
+      rollback:
+        - dropUniqueConstraint:
+            tableName: items
+            constraintName: uk_items_name

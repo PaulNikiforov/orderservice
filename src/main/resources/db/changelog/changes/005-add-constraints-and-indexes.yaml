@@ -7,6 +7,10 @@ databaseChangeLog:
             tableName: order_items
             columnNames: order_id, item_id
             constraintName: uk_order_items_order_item
+      rollback:
+        - dropUniqueConstraint:
+            tableName: order_items
+            constraintName: uk_order_items_order_item
 
   - changeSet:
       id: 005-add-check-orders-total-price
@@ -36,3 +40,7 @@ databaseChangeLog:
             tableName: orders
             columnName: deleted
             defaultValueBoolean: false
+      rollback:
+        - dropDefaultValue:
+            tableName: orders
+            columnName: deleted

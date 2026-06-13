@@ -1,6 +1,6 @@
 package com.innowise.orderservice.client;
 
-import com.innowise.orderservice.dto.UserDto;
+import com.innowise.orderservice.model.dto.UserDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +23,11 @@ public class UserServiceClientImpl implements UserServiceClient {
                 .body(UserDto.class);
     }
 
-    @SuppressWarnings("unused")
-    private UserDto fallback(Long userId, Throwable t) {
+    /**
+     * Resilience4j fallback for {@link #getUserById}: returns {@code null} so callers
+     * can degrade gracefully instead of propagating the failure.
+     */
+    UserDto fallback(Long userId, Throwable t) {
         log.warn("UserService unavailable for userId={}: {}", userId, t.getMessage());
         return null;
     }

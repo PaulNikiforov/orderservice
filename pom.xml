@@ -34,8 +34,7 @@
 			**/exception/**,
 			**/util/**,
 			**/kafka/**,
-			**/target/generated-sources/**
-		</sonar.coverage.exclusions>
+        </sonar.coverage.exclusions>
 		<sonar.scanner.skipJreProvisioning>true</sonar.scanner.skipJreProvisioning>
 	</properties>
 	<dependencies>

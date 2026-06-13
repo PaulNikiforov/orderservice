@@ -28,9 +28,6 @@ class OrderRepositoryTest {
     private OrderRepository orderRepository;
 
     @Autowired
-    private OrderItemRepository orderItemRepository;
-
-    @Autowired
     private ItemRepository itemRepository;
 
     @Autowired
@@ -131,6 +128,9 @@ class OrderRepositoryTest {
 
         orderRepository.deleteById(orderId);
 
-        assertThat(orderItemRepository.count()).isZero();
+        Long count = entityManager.getEntityManager()
+                .createQuery("SELECT COUNT(oi) FROM OrderItem oi", Long.class)
+                .getSingleResult();
+        assertThat(count).isZero();
     }
 }

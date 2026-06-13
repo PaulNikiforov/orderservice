@@ -1,9 +1,9 @@
 package com.innowise.orderservice.service;
 
-import com.innowise.orderservice.dto.CreateOrderRequest;
-import com.innowise.orderservice.dto.OrderDto;
-import com.innowise.orderservice.dto.OrderWithUserDto;
-import com.innowise.orderservice.dto.UpdateOrderRequest;
+import com.innowise.orderservice.model.dto.CreateOrderRequest;
+import com.innowise.orderservice.model.dto.OrderDto;
+import com.innowise.orderservice.model.dto.OrderWithUserDto;
+import com.innowise.orderservice.model.dto.UpdateOrderRequest;
 
 /**
  * Write-side use cases for orders (command half of the CQRS-style split with
