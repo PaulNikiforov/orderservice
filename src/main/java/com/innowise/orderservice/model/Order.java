@@ -26,8 +26,8 @@ public class Order extends BaseEntity {
     @SequenceGenerator(name = "orders_id_seq", sequenceName = "orders_id_seq", allocationSize = 50)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "user_email", nullable = false)
+    private String userEmail;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)

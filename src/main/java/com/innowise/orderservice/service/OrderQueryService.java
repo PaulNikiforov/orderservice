@@ -5,12 +5,6 @@ import com.innowise.orderservice.repository.specification.OrderFilterRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-/**
- * Read-side use cases for orders (query half of the CQRS-style split with
- * {@link com.innowise.orderservice.service.OrderCommandService}). Results are enriched
- * with user data from the User Service; if that service is unavailable the user field
- * degrades to {@code null} rather than failing the request.
- */
 public interface OrderQueryService {
 
     /**
@@ -24,9 +18,9 @@ public interface OrderQueryService {
 
     /**
      * Returns a page of orders matching the given filter, each enriched with user data.
-     * User lookups are resolved once per distinct user id to avoid an N+1 of HTTP calls.
+     * User lookups are resolved once per distinct user id to avoid N+1 HTTP calls.
      *
-     * @param filter   optional criteria (user id, status, created-at range); null fields are ignored
+     * @param filter   optional criteria (user id, statuses, created-at range); null/empty fields are ignored
      * @param pageable paging and sorting
      * @return a page of orders with user info
      */

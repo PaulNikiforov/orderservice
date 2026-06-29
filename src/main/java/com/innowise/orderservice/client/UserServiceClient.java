@@ -2,18 +2,14 @@ package com.innowise.orderservice.client;
 
 import com.innowise.orderservice.model.dto.UserDto;
 
-/**
- * Client for the external User Service. Implementations are expected to degrade
- * gracefully: when the User Service is unreachable or returns an error the call
- * resolves to {@code null} rather than propagating the failure.
- */
 public interface UserServiceClient {
 
     /**
-     * Fetches user data by id.
+     * Looks up a user by email via User Service.
+     * Returns {@code null} when the circuit breaker is open or the service returns a non-2xx response.
      *
-     * @param userId the user id
-     * @return the user, or {@code null} if the user is not found or the User Service is unavailable
+     * @param email the user's email address
+     * @return the user data, or {@code null} on degradation
      */
-    UserDto getUserById(Long userId);
+    UserDto getUserByEmail(String email);
 }

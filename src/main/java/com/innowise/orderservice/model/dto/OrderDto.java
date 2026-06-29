@@ -8,7 +8,7 @@ import java.util.List;
 
 public record OrderDto(
         Long id,
-        Long userId,
+        String userEmail,
         OrderStatus status,
         BigDecimal totalPrice,
         List<OrderItemDto> items,

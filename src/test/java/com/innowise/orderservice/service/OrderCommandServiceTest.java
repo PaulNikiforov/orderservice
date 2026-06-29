@@ -8,7 +8,6 @@ import com.innowise.orderservice.model.Item;
 import com.innowise.orderservice.model.Order;
 import com.innowise.orderservice.model.OrderStatus;
 import com.innowise.orderservice.model.dto.CreateOrderRequest;
-import com.innowise.orderservice.model.dto.OrderDto;
 import com.innowise.orderservice.model.dto.OrderItemRequest;
 import com.innowise.orderservice.model.dto.OrderWithUserDto;
 import com.innowise.orderservice.model.dto.UpdateOrderRequest;
@@ -29,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,10 +62,8 @@ class OrderCommandServiceTest {
         Item item = item(1L, new BigDecimal("10.00"));
         when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(
-                new OrderDto(1L, 42L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null));
 
-        var request = new CreateOrderRequest(42L, List.of(new OrderItemRequest(1L, 3)));
+        var request = new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(1L, 3)));
         orderService.create(request);
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
@@ -78,10 +76,8 @@ class OrderCommandServiceTest {
         Item item = item(1L, new BigDecimal("5.00"));
         when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(
-                new OrderDto(1L, 1L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null));
 
-        orderService.create(new CreateOrderRequest(1L, List.of(new OrderItemRequest(1L, 1))));
+        orderService.create(new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(1L, 1))));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -89,11 +85,24 @@ class OrderCommandServiceTest {
     }
 
     @Test
+    void create_setsUserEmail() {
+        Item item = item(1L, new BigDecimal("5.00"));
+        when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
+        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        orderService.create(new CreateOrderRequest("alice@test.com", List.of(new OrderItemRequest(1L, 1))));
+
+        ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(captor.capture());
+        assertThat(captor.getValue().getUserEmail()).isEqualTo("alice@test.com");
+    }
+
+    @Test
     void create_throwsItemNotFoundException_whenItemNotExists() {
         when(itemRepository.findAllById(List.of(99L))).thenReturn(List.of());
 
-        assertThatThrownBy(() -> orderService.create(
-                new CreateOrderRequest(1L, List.of(new OrderItemRequest(99L, 1)))))
+        var request = new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(99L, 1)));
+        assertThatThrownBy(() -> orderService.create(request))
                 .isInstanceOf(ItemNotFoundException.class)
                 .hasMessageContaining("99");
     }
@@ -104,10 +113,8 @@ class OrderCommandServiceTest {
         Item item2 = item(2L, new BigDecimal("20.00"));
         when(itemRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(item1, item2));
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(
-                new OrderDto(1L, 1L, OrderStatus.PENDING, new BigDecimal("0.00"), List.of(), null, null));
 
-        var request = new CreateOrderRequest(1L, List.of(
+        var request = new CreateOrderRequest("user@test.com", List.of(
                 new OrderItemRequest(1L, 2),
                 new OrderItemRequest(2L, 1)
         ));
@@ -122,6 +129,7 @@ class OrderCommandServiceTest {
     void update_changesStatus() {
         Order order = new Order();
         order.setStatus(OrderStatus.PENDING);
+        order.setUserEmail("user@test.com");
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
         when(orderMapper.toWithUserDto(any(Order.class), any())).thenReturn(
                 new OrderWithUserDto(1L, OrderStatus.CONFIRMED, new BigDecimal("0.00"), List.of(), null, null, null));
@@ -136,7 +144,8 @@ class OrderCommandServiceTest {
     void update_throwsOrderNotFoundException_whenNotFound() {
         when(orderRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.update(99L, new UpdateOrderRequest(OrderStatus.CONFIRMED)))
+        var request = new UpdateOrderRequest(OrderStatus.CONFIRMED);
+        assertThatThrownBy(() -> orderService.update(99L, request))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessageContaining("99");
     }

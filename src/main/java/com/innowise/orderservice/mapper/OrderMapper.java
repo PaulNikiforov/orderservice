@@ -1,11 +1,11 @@
 package com.innowise.orderservice.mapper;
 
+import com.innowise.orderservice.model.Order;
+import com.innowise.orderservice.model.OrderItem;
 import com.innowise.orderservice.model.dto.OrderDto;
 import com.innowise.orderservice.model.dto.OrderItemDto;
 import com.innowise.orderservice.model.dto.OrderWithUserDto;
 import com.innowise.orderservice.model.dto.UserDto;
-import com.innowise.orderservice.model.Order;
-import com.innowise.orderservice.model.OrderItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

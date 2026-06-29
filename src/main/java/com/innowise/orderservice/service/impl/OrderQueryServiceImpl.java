@@ -37,15 +37,15 @@ public class OrderQueryServiceImpl implements OrderQueryService {
     @Transactional(readOnly = true)
     public Page<OrderWithUserDto> getAll(OrderFilterRequest filter, Pageable pageable) {
         Page<Order> page = orderRepository.findAll(OrderSpecification.fromFilter(filter), pageable);
-        Map<Long, UserDto> userCache = new HashMap<>();
-        for (Long uid : page.getContent().stream().map(Order::getUserId).distinct().toList()) {
-            userCache.put(uid, userServiceClient.getUserById(uid));
+        Map<String, UserDto> userCache = new HashMap<>();
+        for (String email : page.getContent().stream().map(Order::getUserEmail).distinct().toList()) {
+            userCache.put(email, userServiceClient.getUserByEmail(email));
         }
-        return page.map(order -> orderMapper.toWithUserDto(order, userCache.get(order.getUserId())));
+        return page.map(order -> orderMapper.toWithUserDto(order, userCache.get(order.getUserEmail())));
     }
 
     private OrderWithUserDto toOrderWithUserDto(Order order) {
-        UserDto user = userServiceClient.getUserById(order.getUserId());
+        UserDto user = userServiceClient.getUserByEmail(order.getUserEmail());
         return orderMapper.toWithUserDto(order, user);
     }
 

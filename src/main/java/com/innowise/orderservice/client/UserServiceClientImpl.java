@@ -16,19 +16,15 @@ public class UserServiceClientImpl implements UserServiceClient {
 
     @CircuitBreaker(name = "userService", fallbackMethod = "fallback")
     @Override
-    public UserDto getUserById(Long userId) {
+    public UserDto getUserByEmail(String email) {
         return restClient.get()
-                .uri("/api/v1/users/{id}", userId)
+                .uri("/api/users/by-email?email={email}", email)
                 .retrieve()
                 .body(UserDto.class);
     }
 
-    /**
-     * Resilience4j fallback for {@link #getUserById}: returns {@code null} so callers
-     * can degrade gracefully instead of propagating the failure.
-     */
-    UserDto fallback(Long userId, Throwable t) {
-        log.warn("UserService unavailable for userId={}: {}", userId, t.getMessage());
+    UserDto fallback(String email, Throwable t) {
+        log.warn("UserService unavailable for email={}: {}", email, t.getMessage());
         return null;
     }
 }

@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-drop-composite-user-index
+      author: dev
+      changes:
+        - dropIndex:
+            tableName: orders
+            indexName: idx_orders_user_id_status
+      rollback:
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_user_id_status
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: status
+
+  - changeSet:
+      id: 008-rename-user-id-to-user-email
+      author: dev
+      changes:
+        - renameColumn:
+            tableName: orders
+            oldColumnName: user_id
+            newColumnName: user_email
+            columnDataType: BIGINT
+      rollback:
+        - renameColumn:
+            tableName: orders
+            oldColumnName: user_email
+            newColumnName: user_id
+            columnDataType: BIGINT
+
+  - changeSet:
+      id: 008-change-user-email-type
+      author: dev
+      changes:
+        - modifyDataType:
+            tableName: orders
+            columnName: user_email
+            newDataType: VARCHAR(255)
+      rollback:
+        - modifyDataType:
+            tableName: orders
+            columnName: user_email
+            newDataType: BIGINT
+
+  - changeSet:
+      id: 008-add-user-email-status-index
+      author: dev
+      changes:
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_user_email_status
+            columns:
+              - column:
+                  name: user_email
+              - column:
+                  name: status
+      rollback:
+        - dropIndex:
+            tableName: orders
+            indexName: idx_orders_user_email_status

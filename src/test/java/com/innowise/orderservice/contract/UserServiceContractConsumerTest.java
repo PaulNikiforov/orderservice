@@ -36,19 +36,18 @@ class UserServiceContractConsumerTest {
     private UserServiceClient userServiceClient;
 
     @Test
-    void getUserById_withExistingUser_matchesContractAndReturnsUserData() {
-        UserDto user = userServiceClient.getUserById(1L);
+    void getUserByEmail_withExistingUser_matchesContractAndReturnsUserData() {
+        UserDto user = userServiceClient.getUserByEmail("contract@test.com");
 
         assertThat(user).isNotNull();
-        assertThat(user.id()).isEqualTo(1L);
+        assertThat(user.email()).isEqualTo("contract@test.com");
         assertThat(user.name()).isEqualTo("Contract");
         assertThat(user.surname()).isEqualTo("User");
-        assertThat(user.email()).isEqualTo("contract@test.com");
     }
 
     @Test
-    void getUserById_withUnknownUser_returnsFallbackNull() {
-        UserDto user = userServiceClient.getUserById(99999L);
+    void getUserByEmail_withUnknownUser_returnsFallbackNull() {
+        UserDto user = userServiceClient.getUserByEmail("unknown@test.com");
 
         assertThat(user).isNull();
     }

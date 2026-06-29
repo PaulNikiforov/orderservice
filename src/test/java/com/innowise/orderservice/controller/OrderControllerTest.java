@@ -5,7 +5,6 @@ import com.innowise.orderservice.exception.ItemNotFoundException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
 import com.innowise.orderservice.model.OrderStatus;
 import com.innowise.orderservice.model.dto.CreateOrderRequest;
-import com.innowise.orderservice.model.dto.OrderDto;
 import com.innowise.orderservice.model.dto.OrderWithUserDto;
 import com.innowise.orderservice.model.dto.UpdateOrderRequest;
 import com.innowise.orderservice.model.dto.UserDto;
@@ -13,6 +12,7 @@ import com.innowise.orderservice.repository.specification.OrderFilterRequest;
 import com.innowise.orderservice.service.OrderCommandService;
 import com.innowise.orderservice.service.OrderQueryService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
@@ -25,9 +25,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -47,25 +49,22 @@ class OrderControllerTest {
     @MockitoBean
     private OrderQueryService queryService;
 
-    private OrderDto orderDto() {
-        return new OrderDto(1L, 1L, OrderStatus.PENDING, BigDecimal.valueOf(199.99),
-                List.of(), LocalDateTime.now(), LocalDateTime.now());
-    }
+    private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 1, 15, 12, 0, 0);
 
     private OrderWithUserDto orderWithUserDto() {
         var user = new UserDto(1L, "user@example.com", "John", "Doe");
         return new OrderWithUserDto(1L, OrderStatus.PENDING, BigDecimal.valueOf(199.99),
-                List.of(), LocalDateTime.now(), LocalDateTime.now(), user);
+                List.of(), FIXED_NOW, FIXED_NOW, user);
     }
 
     @Test
     void create_returns201_withValidRequest() throws Exception {
-        when(commandService.create(any(CreateOrderRequest.class))).thenReturn(orderDto());
+        when(commandService.create(any(CreateOrderRequest.class))).thenReturn(orderWithUserDto());
 
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"userId":1,"items":[{"itemId":10,"quantity":2}]}
+                                {"userEmail":"user@example.com","items":[{"itemId":10,"quantity":2}]}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"));
@@ -76,7 +75,7 @@ class OrderControllerTest {
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"userId":1,"items":[]}
+                                {"userEmail":"user@example.com","items":[]}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
@@ -90,7 +89,7 @@ class OrderControllerTest {
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"userId":1,"items":[{"itemId":10,"quantity":2}]}
+                                {"userEmail":"user@example.com","items":[{"itemId":10,"quantity":2}]}
                                 """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
@@ -131,9 +130,38 @@ class OrderControllerTest {
         var page = new PageImpl<>(List.of(orderWithUserDto()), PageRequest.of(0, 20), 1);
         when(queryService.getAll(any(OrderFilterRequest.class), any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/v1/orders").param("status", "PENDING"))
+        mockMvc.perform(get("/api/v1/orders").param("statuses", "PENDING"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].status").value("PENDING"));
+    }
+
+    @Test
+    void getAll_accepts_multipleStatusesFilter() throws Exception {
+        var page = new PageImpl<>(List.of(orderWithUserDto()), PageRequest.of(0, 20), 1);
+        when(queryService.getAll(any(OrderFilterRequest.class), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("statuses", "PENDING")
+                        .param("statuses", "CONFIRMED"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<OrderFilterRequest> captor = ArgumentCaptor.forClass(OrderFilterRequest.class);
+        verify(queryService).getAll(captor.capture(), any());
+        assertThat(captor.getValue().statuses())
+                .containsExactlyInAnyOrder(OrderStatus.PENDING, OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    void getAll_accepts_userEmailFilter() throws Exception {
+        var page = new PageImpl<>(List.of(orderWithUserDto()), PageRequest.of(0, 20), 1);
+        when(queryService.getAll(any(OrderFilterRequest.class), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/orders").param("userEmail", "alice@test.com"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<OrderFilterRequest> captor = ArgumentCaptor.forClass(OrderFilterRequest.class);
+        verify(queryService).getAll(captor.capture(), any());
+        assertThat(captor.getValue().userEmail()).isEqualTo("alice@test.com");
     }
 
     @Test
@@ -150,7 +178,7 @@ class OrderControllerTest {
     @Test
     void update_returns200_withUpdatedStatus() throws Exception {
         var updated = new OrderWithUserDto(1L, OrderStatus.CONFIRMED, BigDecimal.valueOf(199.99),
-                List.of(), LocalDateTime.now(), LocalDateTime.now(), null);
+                List.of(), FIXED_NOW, FIXED_NOW, null);
         when(commandService.update(eq(1L), any(UpdateOrderRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put("/api/v1/orders/1")

@@ -7,9 +7,8 @@ import com.innowise.orderservice.mapper.OrderMapper;
 import com.innowise.orderservice.model.Item;
 import com.innowise.orderservice.model.Order;
 import com.innowise.orderservice.model.OrderItem;
-import com.innowise.orderservice.model.OrderStatus;
 import com.innowise.orderservice.model.dto.CreateOrderRequest;
-import com.innowise.orderservice.model.dto.OrderDto;
+import com.innowise.orderservice.model.dto.OrderItemRequest;
 import com.innowise.orderservice.model.dto.OrderWithUserDto;
 import com.innowise.orderservice.model.dto.UpdateOrderRequest;
 import com.innowise.orderservice.model.dto.UserDto;
@@ -37,12 +36,11 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
     @Override
     @Transactional
-    public OrderDto create(CreateOrderRequest request) {
+    public OrderWithUserDto create(CreateOrderRequest request) {
         Order order = new Order();
-        order.setUserId(request.userId());
-        order.setStatus(OrderStatus.PENDING);
+        order.setUserEmail(request.userEmail());
 
-        List<Long> itemIds = request.items().stream().map(r -> r.itemId()).toList();
+        List<Long> itemIds = request.items().stream().map(OrderItemRequest::itemId).toList();
         Map<Long, Item> itemMap = itemRepository.findAllById(itemIds)
                 .stream().collect(Collectors.toMap(Item::getId, Function.identity()));
 
@@ -61,7 +59,8 @@ public class OrderCommandServiceImpl implements OrderCommandService {
         }
 
         order.setTotalPrice(totalPrice);
-        return orderMapper.toDto(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        return toOrderWithUserDto(saved);
     }
 
     @Override
@@ -79,7 +78,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     }
 
     private OrderWithUserDto toOrderWithUserDto(Order order) {
-        UserDto user = userServiceClient.getUserById(order.getUserId());
+        UserDto user = userServiceClient.getUserByEmail(order.getUserEmail());
         return orderMapper.toWithUserDto(order, user);
     }
 

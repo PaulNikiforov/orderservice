@@ -46,7 +46,7 @@ class OrderRepositoryTest {
         Item item2 = persistItem("Gadget", new BigDecimal("19.99"));
 
         Order order = new Order();
-        order.setUserId(1L);
+        order.setUserEmail("user@test.com");
         order.setTotalPrice(new BigDecimal("29.99"));
 
         OrderItem orderItem1 = new OrderItem();
@@ -70,13 +70,13 @@ class OrderRepositoryTest {
 
         assertThat(found.getItems()).hasSize(2);
         assertThat(found.getTotalPrice()).isEqualByComparingTo(new BigDecimal("29.99"));
-        assertThat(found.getUserId()).isEqualTo(1L);
+        assertThat(found.getUserEmail()).isEqualTo("user@test.com");
     }
 
     @Test
     void save_setsDefaultStatus_PENDING() {
         Order order = new Order();
-        order.setUserId(1L);
+        order.setUserEmail("user@test.com");
         order.setTotalPrice(BigDecimal.ZERO);
 
         Order saved = orderRepository.save(order);
@@ -89,7 +89,7 @@ class OrderRepositoryTest {
         Item item = persistItem("Widget", new BigDecimal("9.99"));
 
         Order order = new Order();
-        order.setUserId(1L);
+        order.setUserEmail("user@test.com");
         order.setTotalPrice(new BigDecimal("9.99"));
 
         OrderItem orderItem = new OrderItem();
@@ -114,7 +114,7 @@ class OrderRepositoryTest {
         Item item = persistItem("Gadget", new BigDecimal("15.00"));
 
         Order order = new Order();
-        order.setUserId(1L);
+        order.setUserEmail("user@test.com");
         order.setTotalPrice(new BigDecimal("15.00"));
 
         OrderItem orderItem = new OrderItem();

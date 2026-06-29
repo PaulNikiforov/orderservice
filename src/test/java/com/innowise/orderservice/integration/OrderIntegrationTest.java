@@ -89,18 +89,18 @@ class OrderIntegrationTest {
         return itemRepository.save(item);
     }
 
-    private void stubUserService(Long userId) {
-        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/" + userId))
+    private void stubUserService(String email) {
+        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=" + email))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
                         .withBody("""
-                                {"id":%d,"email":"user@test.com","name":"John","surname":"Doe"}
-                                """.formatted(userId))));
+                                {"id":1,"email":"%s","name":"John","surname":"Doe"}
+                                """.formatted(email))));
     }
 
-    private void stubUserServiceDown(Long userId) {
-        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/" + userId))
+    private void stubUserServiceDown(String email) {
+        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=" + email))
                 .willReturn(aResponse().withStatus(503)));
     }
 
@@ -110,13 +110,13 @@ class OrderIntegrationTest {
 
         ResponseEntity<OrderDto> response = restTemplate.postForEntity(
                 "/api/v1/orders",
-                new CreateOrderRequest(42L, List.of(new OrderItemRequest(item.getId(), 2))),
+                new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(item.getId(), 2))),
                 OrderDto.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         OrderDto body = response.getBody();
         assertThat(body).isNotNull();
-        assertThat(body.userId()).isEqualTo(42L);
+        assertThat(body.userEmail()).isEqualTo("user@test.com");
         assertThat(body.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(body.totalPrice()).isEqualByComparingTo(new BigDecimal("99.98"));
     }
@@ -125,7 +125,7 @@ class OrderIntegrationTest {
     void createOrder_returns404_forUnknownItem() {
         ResponseEntity<Void> response = restTemplate.postForEntity(
                 "/api/v1/orders",
-                new CreateOrderRequest(42L, List.of(new OrderItemRequest(999999L, 1))),
+                new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(999999L, 1))),
                 Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -136,11 +136,11 @@ class OrderIntegrationTest {
         Item item = createItem("Gadget", new BigDecimal("25.00"));
         OrderDto created = restTemplate.postForEntity(
                 "/api/v1/orders",
-                new CreateOrderRequest(42L, List.of(new OrderItemRequest(item.getId(), 1))),
+                new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(item.getId(), 1))),
                 OrderDto.class).getBody();
         assertThat(created).isNotNull();
 
-        stubUserService(42L);
+        stubUserService("user@test.com");
 
         ResponseEntity<OrderWithUserDto> response = restTemplate.getForEntity(
                 "/api/v1/orders/" + created.id(), OrderWithUserDto.class);
@@ -151,7 +151,7 @@ class OrderIntegrationTest {
         assertThat(fetched.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(fetched.totalPrice()).isGreaterThan(BigDecimal.ZERO);
         assertThat(fetched.user()).isNotNull();
-        assertThat(fetched.user().id()).isEqualTo(42L);
+        assertThat(fetched.user().email()).isEqualTo("user@test.com");
         assertThat(orderRepository.findById(created.id())).isPresent();
     }
 
@@ -160,11 +160,11 @@ class OrderIntegrationTest {
         Item item = createItem("Thing", new BigDecimal("10.00"));
         OrderDto created = restTemplate.postForEntity(
                 "/api/v1/orders",
-                new CreateOrderRequest(42L, List.of(new OrderItemRequest(item.getId(), 1))),
+                new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(item.getId(), 1))),
                 OrderDto.class).getBody();
         assertThat(created).isNotNull();
 
-        stubUserServiceDown(42L);
+        stubUserServiceDown("user@test.com");
 
         ResponseEntity<OrderWithUserDto> response = restTemplate.getForEntity(
                 "/api/v1/orders/" + created.id(), OrderWithUserDto.class);
@@ -185,11 +185,11 @@ class OrderIntegrationTest {
     @Test
     void getAll_filtersByStatus() throws Exception {
         stubAnyUser();
-        persistOrder(42L, OrderStatus.PENDING);
-        persistOrder(42L, OrderStatus.CONFIRMED);
-        persistOrder(42L, OrderStatus.CONFIRMED);
+        persistOrder("user@test.com", OrderStatus.PENDING);
+        persistOrder("user@test.com", OrderStatus.CONFIRMED);
+        persistOrder("user@test.com", OrderStatus.CONFIRMED);
 
-        JsonNode page = getOrders("?status=CONFIRMED");
+        JsonNode page = getOrders("?statuses=CONFIRMED");
 
         assertThat(page.get("totalElements").asInt()).isEqualTo(2);
         page.get("content").forEach(node ->
@@ -197,15 +197,46 @@ class OrderIntegrationTest {
     }
 
     @Test
+    void getAll_filtersByMultipleStatuses() throws Exception {
+        stubAnyUser();
+        persistOrder("user@test.com", OrderStatus.PENDING);
+        persistOrder("user@test.com", OrderStatus.CONFIRMED);
+        persistOrder("user@test.com", OrderStatus.CANCELLED);
+
+        JsonNode page = getOrders("?statuses=PENDING&statuses=CONFIRMED");
+
+        assertThat(page.get("totalElements").asInt()).isEqualTo(2);
+        page.get("content").forEach(node ->
+                assertThat(node.get("status").asText()).isIn("PENDING", "CONFIRMED"));
+    }
+
+    @Test
+    void getAll_filtersByUserEmail() throws Exception {
+        stubAnyUser();
+        persistOrder("alice@test.com", OrderStatus.PENDING);
+        persistOrder("alice@test.com", OrderStatus.CONFIRMED);
+        persistOrder("bob@test.com", OrderStatus.PENDING);
+
+        JsonNode page = getOrders("?userEmail=alice@test.com");
+
+        assertThat(page.get("totalElements").asInt()).isEqualTo(2);
+        page.get("content").forEach(node ->
+                assertThat(node.get("userEmail").asText()).isEqualTo("alice@test.com"));
+    }
+
+    @Test
     void getAll_filtersByDateRange() throws Exception {
         stubAnyUser();
-        Long oldOrderId = persistOrder(42L, OrderStatus.PENDING);
-        persistOrder(42L, OrderStatus.PENDING);
+        LocalDateTime baseTime = LocalDateTime.of(2026, 6, 1, 12, 0, 0);
+        Long oldOrderId = persistOrder("user@test.com", OrderStatus.PENDING);
+        Long recentOrderId = persistOrder("user@test.com", OrderStatus.PENDING);
 
         jdbcTemplate.update("UPDATE orders SET created_at = ? WHERE id = ?",
-                Timestamp.valueOf(LocalDateTime.now().minusDays(10)), oldOrderId);
+                Timestamp.valueOf(baseTime.minusDays(10)), oldOrderId);
+        jdbcTemplate.update("UPDATE orders SET created_at = ? WHERE id = ?",
+                Timestamp.valueOf(baseTime), recentOrderId);
 
-        String from = LocalDateTime.now().minusHours(1).toString();
+        String from = baseTime.minusDays(1).toString();
         JsonNode page = getOrders("?createdFrom=" + from);
 
         assertThat(page.get("totalElements").asInt()).isEqualTo(1);
@@ -215,7 +246,7 @@ class OrderIntegrationTest {
     void getAll_returnsPaginated() throws Exception {
         stubAnyUser();
         for (int i = 0; i < 25; i++) {
-            persistOrder(42L, OrderStatus.PENDING);
+            persistOrder("user@test.com", OrderStatus.PENDING);
         }
 
         JsonNode firstPage = getOrders("?page=0&size=10");
@@ -228,11 +259,11 @@ class OrderIntegrationTest {
 
     @Test
     void updateOrder_changesStatusInDatabase() {
-        stubUserService(42L);
+        stubUserService("user@test.com");
         Item item = createItem("Gizmo", new BigDecimal("15.00"));
         OrderDto created = restTemplate.postForEntity(
                 "/api/v1/orders",
-                new CreateOrderRequest(42L, List.of(new OrderItemRequest(item.getId(), 1))),
+                new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(item.getId(), 1))),
                 OrderDto.class).getBody();
         assertThat(created).isNotNull();
 
@@ -256,7 +287,7 @@ class OrderIntegrationTest {
         Item item = createItem("Trinket", new BigDecimal("5.00"));
         OrderDto created = restTemplate.postForEntity(
                 "/api/v1/orders",
-                new CreateOrderRequest(42L, List.of(new OrderItemRequest(item.getId(), 1))),
+                new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(item.getId(), 1))),
                 OrderDto.class).getBody();
         assertThat(created).isNotNull();
 
@@ -274,9 +305,9 @@ class OrderIntegrationTest {
         assertThat(deleted).isTrue();
     }
 
-    private Long persistOrder(Long userId, OrderStatus status) {
+    private Long persistOrder(String userEmail, OrderStatus status) {
         Order order = new Order();
-        order.setUserId(userId);
+        order.setUserEmail(userEmail);
         order.setStatus(status);
         order.setTotalPrice(new BigDecimal("10.00"));
         order.setDeleted(false);
@@ -284,7 +315,7 @@ class OrderIntegrationTest {
     }
 
     private void stubAnyUser() {
-        wireMockServer.stubFor(get(urlMatching("/api/v1/users/.*"))
+        wireMockServer.stubFor(get(urlMatching("/api/users/by-email.*"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")

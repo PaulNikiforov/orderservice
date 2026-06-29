@@ -43,30 +43,30 @@ class OrderQueryServiceTest {
     @InjectMocks
     private OrderQueryServiceImpl orderService;
 
-    private Order order(Long userId, OrderStatus status) {
+    private Order order(String userEmail, OrderStatus status) {
         Order order = new Order();
-        order.setUserId(userId);
+        order.setUserEmail(userEmail);
         order.setStatus(status);
         order.setTotalPrice(new BigDecimal("100.00"));
         return order;
     }
 
-    private OrderWithUserDto orderWithUserDto(Long userId, OrderStatus status) {
-        var user = new UserDto(userId, "user@example.com", "John", "Doe");
+    private OrderWithUserDto orderWithUserDto(String userEmail, OrderStatus status) {
+        var user = new UserDto(null, userEmail, "John", "Doe");
         return new OrderWithUserDto(null, status, new BigDecimal("100.00"), List.of(), null, null, user);
     }
 
     @Test
     void getById_returnsOrderWithUser() {
-        Order order = order(42L, OrderStatus.PENDING);
-        var expected = orderWithUserDto(42L, OrderStatus.PENDING);
+        Order order = order("alice@test.com", OrderStatus.PENDING);
+        var expected = orderWithUserDto("alice@test.com", OrderStatus.PENDING);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
         when(orderMapper.toWithUserDto(any(), any())).thenReturn(expected);
 
         var result = orderService.getById(1L);
 
         assertThat(result).isEqualTo(expected);
-        assertThat(result.user().id()).isEqualTo(42L);
+        assertThat(result.user().email()).isEqualTo("alice@test.com");
     }
 
     @Test
@@ -80,14 +80,14 @@ class OrderQueryServiceTest {
 
     @Test
     void getAll_returnsPaginatedResult() {
-        var orders = List.of(order(1L, OrderStatus.PENDING), order(2L, OrderStatus.CONFIRMED));
+        var orders = List.of(order("a@test.com", OrderStatus.PENDING), order("b@test.com", OrderStatus.CONFIRMED));
         var page = new PageImpl<>(orders, PageRequest.of(0, 10), 2);
         when(orderRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
         when(orderMapper.toWithUserDto(any(), any()))
-                .thenReturn(orderWithUserDto(1L, OrderStatus.PENDING))
-                .thenReturn(orderWithUserDto(2L, OrderStatus.CONFIRMED));
+                .thenReturn(orderWithUserDto("a@test.com", OrderStatus.PENDING))
+                .thenReturn(orderWithUserDto("b@test.com", OrderStatus.CONFIRMED));
 
-        var filter = new OrderFilterRequest(null, null, null, null);
+        var filter = new OrderFilterRequest(null, List.of(), null, null);
         var result = orderService.getAll(filter, PageRequest.of(0, 10));
 
         assertThat(result.getTotalElements()).isEqualTo(2);
@@ -99,7 +99,7 @@ class OrderQueryServiceTest {
         var page = new PageImpl<Order>(List.of(), PageRequest.of(0, 10), 0);
         when(orderRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
 
-        var filter = new OrderFilterRequest(null, OrderStatus.CANCELLED, null, null);
+        var filter = new OrderFilterRequest(null, List.of(OrderStatus.CANCELLED), null, null);
         var result = orderService.getAll(filter, PageRequest.of(0, 10));
 
         assertThat(result.getContent()).isEmpty();
