@@ -18,7 +18,7 @@ public class UserServiceClientImpl implements UserServiceClient {
     @Override
     public UserDto getUserById(Long userId) {
         return restClient.get()
-                .uri("/api/users/{id}", userId)
+                .uri("/api/v1/users/{id}", userId)
                 .retrieve()
                 .body(UserDto.class);
     }

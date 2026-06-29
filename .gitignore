@@ -36,3 +36,5 @@ build/
 *.md
 *.txt
 .env
+
+META-INF/

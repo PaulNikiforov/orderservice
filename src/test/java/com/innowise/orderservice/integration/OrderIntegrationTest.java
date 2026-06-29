@@ -90,7 +90,7 @@ class OrderIntegrationTest {
     }
 
     private void stubUserService(Long userId) {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/" + userId))
+        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/" + userId))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -100,7 +100,7 @@ class OrderIntegrationTest {
     }
 
     private void stubUserServiceDown(Long userId) {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/" + userId))
+        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/" + userId))
                 .willReturn(aResponse().withStatus(503)));
     }
 
@@ -284,7 +284,7 @@ class OrderIntegrationTest {
     }
 
     private void stubAnyUser() {
-        wireMockServer.stubFor(get(urlMatching("/api/users/.*"))
+        wireMockServer.stubFor(get(urlMatching("/api/v1/users/.*"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")

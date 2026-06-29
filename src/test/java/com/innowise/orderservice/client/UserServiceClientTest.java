@@ -50,7 +50,7 @@ class UserServiceClientTest {
 
     @Test
     void getUserById_shouldReturnUserDto_whenUserExists() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/1"))
+        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/1"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -67,7 +67,7 @@ class UserServiceClientTest {
 
     @Test
     void getUserById_shouldReturnNull_viaFallback_whenServiceResponds404() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/99"))
+        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/99"))
                 .willReturn(aResponse().withStatus(404)));
 
         assertThat(client.getUserById(99L)).isNull();
@@ -75,7 +75,7 @@ class UserServiceClientTest {
 
     @Test
     void getUserById_shouldReturnNull_viaFallback_whenServiceResponds500() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/1"))
+        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/1"))
                 .willReturn(aResponse().withStatus(500)));
 
         assertThat(client.getUserById(1L)).isNull();
@@ -83,7 +83,7 @@ class UserServiceClientTest {
 
     @Test
     void getUserById_shouldReturnNull_viaFallback_whenServiceUnavailable() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/2"))
+        wireMockServer.stubFor(get(urlEqualTo("/api/v1/users/2"))
                 .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
         assertThat(client.getUserById(2L)).isNull();
