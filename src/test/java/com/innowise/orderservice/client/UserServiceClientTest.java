@@ -5,6 +5,8 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.innowise.orderservice.TestcontainersConfiguration;
 import com.innowise.orderservice.model.dto.UserDto;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,9 +45,13 @@ class UserServiceClientTest {
     @Autowired
     private UserServiceClient client;
 
+    @Autowired
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+
     @BeforeEach
     void resetWireMock() {
         wireMockServer.resetAll();
+        circuitBreakerRegistry.circuitBreaker("userService").reset();
     }
 
     @Test
@@ -67,12 +73,26 @@ class UserServiceClientTest {
     }
 
     @Test
-    void getUserByEmail_shouldReturnNull_viaFallback_whenServiceResponds404() {
+    void getUserByEmail_shouldReturnNull_whenServiceResponds404() {
         wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
                 .withQueryParam("email", equalTo("unknown@test.com"))
                 .willReturn(aResponse().withStatus(404)));
 
         assertThat(client.getUserByEmail("unknown@test.com")).isNull();
+    }
+
+    @Test
+    void getUserByEmail_shouldNotOpenCircuit_whenServiceResponds404Repeatedly() {
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("unknown@test.com"))
+                .willReturn(aResponse().withStatus(404)));
+
+        for (int i = 0; i < 20; i++) {
+            client.getUserByEmail("unknown@test.com");
+        }
+
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("userService");
+        assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
 
     @Test

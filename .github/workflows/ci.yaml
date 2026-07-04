@@ -48,6 +48,14 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # StubRunner uses StubsMode.LOCAL — stubs must be in ~/.m2 before verify runs.
+      # Clone the provider repo (shallow) and install its stub JAR into the local Maven cache.
+      - name: Install provider stub JAR
+        run: |
+          git clone --depth 1 --branch task/usr0 https://github.com/PaulNikiforov/userservice.git _stubs/userservice
+          chmod +x _stubs/userservice/mvnw
+          (cd _stubs/userservice && ./mvnw install -DskipTests -B -q)
+
       - run: mvn verify -B
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

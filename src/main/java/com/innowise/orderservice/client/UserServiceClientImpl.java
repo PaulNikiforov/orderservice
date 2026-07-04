@@ -5,6 +5,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 @Slf4j
@@ -17,10 +18,14 @@ public class UserServiceClientImpl implements UserServiceClient {
     @CircuitBreaker(name = "userService", fallbackMethod = "fallback")
     @Override
     public UserDto getUserByEmail(String email) {
-        return restClient.get()
-                .uri("/api/v1/users/by-email?email={email}", email)
-                .retrieve()
-                .body(UserDto.class);
+        try {
+            return restClient.get()
+                    .uri("/api/v1/users/by-email?email={email}", email)
+                    .retrieve()
+                    .body(UserDto.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            return null;
+        }
     }
 
     UserDto fallback(String email, Throwable t) {
