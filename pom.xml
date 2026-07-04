@@ -142,6 +142,11 @@
 			<artifactId>postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.awaitility</groupId>
+			<artifactId>awaitility</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- SCC Stub Runner (consumer-side contract tests). Brings the shaded WireMock 2.x
 		     standalone jar, which is required on Spring Boot 3 (it shades javax.servlet + Jetty 9). -->
 		<dependency>

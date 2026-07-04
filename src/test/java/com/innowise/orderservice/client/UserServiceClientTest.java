@@ -50,7 +50,8 @@ class UserServiceClientTest {
 
     @Test
     void getUserByEmail_shouldReturnUserDto_whenUserExists() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=test@test.com"))
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("test@test.com"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -67,7 +68,8 @@ class UserServiceClientTest {
 
     @Test
     void getUserByEmail_shouldReturnNull_viaFallback_whenServiceResponds404() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=unknown@test.com"))
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("unknown@test.com"))
                 .willReturn(aResponse().withStatus(404)));
 
         assertThat(client.getUserByEmail("unknown@test.com")).isNull();
@@ -75,7 +77,8 @@ class UserServiceClientTest {
 
     @Test
     void getUserByEmail_shouldReturnNull_viaFallback_whenServiceResponds500() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=test@test.com"))
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("test@test.com"))
                 .willReturn(aResponse().withStatus(500)));
 
         assertThat(client.getUserByEmail("test@test.com")).isNull();
@@ -83,7 +86,8 @@ class UserServiceClientTest {
 
     @Test
     void getUserByEmail_shouldReturnNull_viaFallback_whenServiceUnavailable() {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=other@test.com"))
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("other@test.com"))
                 .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
         assertThat(client.getUserByEmail("other@test.com")).isNull();

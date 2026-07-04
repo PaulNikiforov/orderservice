@@ -90,7 +90,8 @@ class OrderIntegrationTest {
     }
 
     private void stubUserService(String email) {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=" + email))
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo(email))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -100,23 +101,26 @@ class OrderIntegrationTest {
     }
 
     private void stubUserServiceDown(String email) {
-        wireMockServer.stubFor(get(urlEqualTo("/api/users/by-email?email=" + email))
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo(email))
                 .willReturn(aResponse().withStatus(503)));
     }
 
     @Test
     void createOrder_returnsCreatedDto() {
         Item item = createItem("Widget", new BigDecimal("49.99"));
+        stubUserService("user@test.com");
 
-        ResponseEntity<OrderDto> response = restTemplate.postForEntity(
+        ResponseEntity<OrderWithUserDto> response = restTemplate.postForEntity(
                 "/api/v1/orders",
                 new CreateOrderRequest("user@test.com", List.of(new OrderItemRequest(item.getId(), 2))),
-                OrderDto.class);
+                OrderWithUserDto.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        OrderDto body = response.getBody();
+        OrderWithUserDto body = response.getBody();
         assertThat(body).isNotNull();
-        assertThat(body.userEmail()).isEqualTo("user@test.com");
+        assertThat(body.user()).isNotNull();
+        assertThat(body.user().email()).isEqualTo("user@test.com");
         assertThat(body.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(body.totalPrice()).isEqualByComparingTo(new BigDecimal("99.98"));
     }
@@ -220,8 +224,13 @@ class OrderIntegrationTest {
         JsonNode page = getOrders("?userEmail=alice@test.com");
 
         assertThat(page.get("totalElements").asInt()).isEqualTo(2);
-        page.get("content").forEach(node ->
-                assertThat(node.get("userEmail").asText()).isEqualTo("alice@test.com"));
+        page.get("content").forEach(node -> {
+            Long id = node.get("id").asLong();
+            assertThat(orderRepository.findById(id))
+                    .get()
+                    .extracting(Order::getUserEmail)
+                    .isEqualTo("alice@test.com");
+        });
     }
 
     @Test
@@ -315,7 +324,7 @@ class OrderIntegrationTest {
     }
 
     private void stubAnyUser() {
-        wireMockServer.stubFor(get(urlMatching("/api/users/by-email.*"))
+        wireMockServer.stubFor(get(urlMatching("/api/v1/users/by-email.*"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")

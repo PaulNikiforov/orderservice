@@ -29,7 +29,11 @@ spring:
       group-id: orderservice
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.innowise.orderservice.kafka
+        spring.json.value.default.type: com.innowise.orderservice.kafka.PaymentCompletedEvent
+        spring.json.use.type.headers: false
 
 management:
   endpoints:

@@ -13,7 +13,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies that orderservice calls User Service at {@code GET /api/users/by-email?email={email}}.
+ * Verifies that orderservice calls User Service at {@code GET /api/v1/users/by-email?email={email}}.
  * Does not load Spring context — exercises RestClient + UserServiceClientImpl directly.
  */
 class OrderToUserServiceClientTest {
@@ -42,7 +42,8 @@ class OrderToUserServiceClientTest {
 
     @Test
     void getUserByEmail_sendsGetToByEmailPath() {
-        wireMock.stubFor(get(urlEqualTo("/api/users/by-email?email=alice@example.com"))
+        wireMock.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("alice@example.com"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -56,7 +57,8 @@ class OrderToUserServiceClientTest {
         assertThat(result.email()).isEqualTo("alice@example.com");
         assertThat(result.name()).isEqualTo("Alice");
         assertThat(result.surname()).isEqualTo("Smith");
-        wireMock.verify(1, getRequestedFor(urlEqualTo("/api/users/by-email?email=alice@example.com")));
+        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("alice@example.com")));
     }
 
     @Test
@@ -65,12 +67,12 @@ class OrderToUserServiceClientTest {
             client.getUserByEmail("bob@example.com");
         } catch (Exception ignored) {}
 
-        wireMock.verify(0, getRequestedFor(urlPathMatching("/api/v1/users/.*")));
+        wireMock.verify(0, getRequestedFor(urlPathMatching("/api/v1/users/[0-9]+")));
     }
 
     @Test
     void getUserByEmail_emailPassedAsQueryParameter() {
-        wireMock.stubFor(get(urlPathEqualTo("/api/users/by-email"))
+        wireMock.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
                 .withQueryParam("email", equalTo("carol@example.com"))
                 .willReturn(aResponse()
                         .withStatus(200)
@@ -80,7 +82,7 @@ class OrderToUserServiceClientTest {
         UserDto result = client.getUserByEmail("carol@example.com");
 
         assertThat(result).isNotNull();
-        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/api/users/by-email"))
+        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/api/v1/users/by-email"))
                 .withQueryParam("email", equalTo("carol@example.com")));
     }
 }
