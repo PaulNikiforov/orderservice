@@ -42,6 +42,24 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(Instant.now(), 400, "Bad Request", "Malformed or unreadable request body", req.getRequestURI());
     }
 
+    @ExceptionHandler(OrderAccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleOrderAccessDenied(OrderAccessDeniedException ex, HttpServletRequest req) {
+        return new ErrorResponse(Instant.now(), 403, "Forbidden", ex.getMessage(), req.getRequestURI());
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleAccessDenied(org.springframework.security.access.AccessDeniedException ex, HttpServletRequest req) {
+        return new ErrorResponse(Instant.now(), 403, "Forbidden", "Access denied", req.getRequestURI());
+    }
+
+    @ExceptionHandler(UserServiceUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ErrorResponse handleUserServiceUnavailable(UserServiceUnavailableException ex, HttpServletRequest req) {
+        return new ErrorResponse(Instant.now(), 503, "Service Unavailable", ex.getMessage(), req.getRequestURI());
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleGeneral(Exception ex, HttpServletRequest req) {

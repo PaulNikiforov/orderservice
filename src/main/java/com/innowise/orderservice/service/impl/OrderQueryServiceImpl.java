@@ -1,6 +1,7 @@
 package com.innowise.orderservice.service.impl;
 
 import com.innowise.orderservice.client.UserServiceClient;
+import com.innowise.orderservice.exception.OrderAccessDeniedException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
 import com.innowise.orderservice.mapper.OrderMapper;
 import com.innowise.orderservice.model.Order;
@@ -29,14 +30,28 @@ public class OrderQueryServiceImpl implements OrderQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public OrderWithUserDto getById(Long id) {
-        return toOrderWithUserDto(findOrderOrThrow(id));
+    public OrderWithUserDto getById(Long id, Long callerUserId, boolean admin) {
+        Order order = findOrderOrThrow(id);
+        if (!admin) {
+            UserDto caller = userServiceClient.getUserById(callerUserId);
+            String callerEmail = caller != null ? caller.email() : null;
+            if (!order.getUserEmail().equals(callerEmail)) {
+                throw new OrderAccessDeniedException("Access denied to order " + id);
+            }
+        }
+        return toOrderWithUserDto(order);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderWithUserDto> getAll(OrderFilterRequest filter, Pageable pageable) {
-        Page<Order> page = orderRepository.findAll(OrderSpecification.fromFilter(filter), pageable);
+    public Page<OrderWithUserDto> getAll(OrderFilterRequest filter, Long callerUserId, boolean admin, Pageable pageable) {
+        OrderFilterRequest effectiveFilter = filter;
+        if (!admin) {
+            UserDto caller = userServiceClient.getUserById(callerUserId);
+            String callerEmail = caller != null ? caller.email() : null;
+            effectiveFilter = new OrderFilterRequest(callerEmail, filter.statuses(), filter.createdFrom(), filter.createdTo());
+        }
+        Page<Order> page = orderRepository.findAll(OrderSpecification.fromFilter(effectiveFilter), pageable);
         Map<String, UserDto> userCache = new HashMap<>();
         for (String email : page.getContent().stream().map(Order::getUserEmail).distinct().toList()) {
             userCache.put(email, userServiceClient.getUserByEmail(email));

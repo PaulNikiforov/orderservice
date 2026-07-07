@@ -1,5 +1,6 @@
 package com.innowise.orderservice.contract;
 
+import com.innowise.orderservice.StubJwksUri;
 import com.innowise.orderservice.TestcontainersConfiguration;
 import com.innowise.orderservice.client.UserServiceClient;
 import com.innowise.orderservice.model.dto.UserDto;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 )
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
+@StubJwksUri
 @AutoConfigureStubRunner(
         ids = "com.innowise:userservice:+:stubs:8484",
         stubsMode = StubRunnerProperties.StubsMode.LOCAL
@@ -48,6 +50,24 @@ class UserServiceContractConsumerTest {
     @Test
     void getUserByEmail_withUnknownUser_returnsFallbackNull() {
         UserDto user = userServiceClient.getUserByEmail("unknown@test.com");
+
+        assertThat(user).isNull();
+    }
+
+    @Test
+    void getUserById_withExistingUser_matchesContractAndReturnsUserData() {
+        UserDto user = userServiceClient.getUserById(100L);
+
+        assertThat(user).isNotNull();
+        assertThat(user.id()).isEqualTo(100L);
+        assertThat(user.email()).isEqualTo("contract@test.com");
+        assertThat(user.name()).isEqualTo("Contract");
+        assertThat(user.surname()).isEqualTo("User");
+    }
+
+    @Test
+    void getUserById_withUnknownUser_returnsFallbackNull() {
+        UserDto user = userServiceClient.getUserById(999999L);
 
         assertThat(user).isNull();
     }

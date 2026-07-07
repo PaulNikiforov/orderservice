@@ -1,5 +1,6 @@
 package com.innowise.orderservice.client;
 
+import com.innowise.orderservice.exception.UserServiceUnavailableException;
 import com.innowise.orderservice.model.dto.UserDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +29,26 @@ public class UserServiceClientImpl implements UserServiceClient {
         }
     }
 
+    @CircuitBreaker(name = "userService", fallbackMethod = "fallbackById")
+    @Override
+    public UserDto getUserById(Long id) {
+        try {
+            return restClient.get()
+                    .uri("/api/v1/users/{id}", id)
+                    .retrieve()
+                    .body(UserDto.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            return null;
+        }
+    }
+
     UserDto fallback(String email, Throwable t) {
         log.warn("UserService unavailable for email={}: {}", email, t.getMessage());
         return null;
+    }
+
+    UserDto fallbackById(Long id, Throwable t) {
+        log.warn("UserService unavailable for id={}: {}", id, t.getMessage());
+        throw new UserServiceUnavailableException("User Service unavailable for id=" + id, t);
     }
 }

@@ -2,6 +2,7 @@ package com.innowise.orderservice.service.impl;
 
 import com.innowise.orderservice.client.UserServiceClient;
 import com.innowise.orderservice.exception.ItemNotFoundException;
+import com.innowise.orderservice.exception.OrderAccessDeniedException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
 import com.innowise.orderservice.mapper.OrderMapper;
 import com.innowise.orderservice.model.Item;
@@ -36,9 +37,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
     @Override
     @Transactional
-    public OrderWithUserDto create(CreateOrderRequest request) {
+    public OrderWithUserDto create(CreateOrderRequest request, Long callerUserId) {
         Order order = new Order();
-        order.setUserEmail(request.userEmail());
+        UserDto caller = userServiceClient.getUserById(callerUserId);
+        order.setUserEmail(caller != null ? caller.email() : null);
 
         List<Long> itemIds = request.items().stream().map(OrderItemRequest::itemId).toList();
         Map<Long, Item> itemMap = itemRepository.findAllById(itemIds)
@@ -65,16 +67,30 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
     @Override
     @Transactional
-    public OrderWithUserDto update(Long id, UpdateOrderRequest request) {
+    public OrderWithUserDto update(Long id, UpdateOrderRequest request, Long callerUserId, boolean admin) {
         Order order = findOrderOrThrow(id);
+        checkOwnershipOrThrow(order, id, callerUserId, admin);
         order.setStatus(request.status());
         return toOrderWithUserDto(order);
     }
 
     @Override
     @Transactional
-    public void delete(Long id) {
-        findOrderOrThrow(id).setDeleted(true);
+    public void delete(Long id, Long callerUserId, boolean admin) {
+        Order order = findOrderOrThrow(id);
+        checkOwnershipOrThrow(order, id, callerUserId, admin);
+        order.setDeleted(true);
+    }
+
+    private void checkOwnershipOrThrow(Order order, Long orderId, Long callerUserId, boolean admin) {
+        if (admin) {
+            return;
+        }
+        UserDto caller = userServiceClient.getUserById(callerUserId);
+        String callerEmail = caller != null ? caller.email() : null;
+        if (!order.getUserEmail().equals(callerEmail)) {
+            throw new OrderAccessDeniedException("Access denied to order " + orderId);
+        }
     }
 
     private OrderWithUserDto toOrderWithUserDto(Order order) {

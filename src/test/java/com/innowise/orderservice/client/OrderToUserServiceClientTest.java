@@ -85,4 +85,22 @@ class OrderToUserServiceClientTest {
         wireMock.verify(1, getRequestedFor(urlPathEqualTo("/api/v1/users/by-email"))
                 .withQueryParam("email", equalTo("carol@example.com")));
     }
+
+    @Test
+    void getUserById_sendsGetToIdPath() {
+        wireMock.stubFor(get(urlPathEqualTo("/api/v1/users/42"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"id":42,"email":"alice@example.com","name":"Alice","surname":"Smith"}
+                                """)));
+
+        UserDto result = client.getUserById(42L);
+
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(42L);
+        assertThat(result.email()).isEqualTo("alice@example.com");
+        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/api/v1/users/42")));
+    }
 }
