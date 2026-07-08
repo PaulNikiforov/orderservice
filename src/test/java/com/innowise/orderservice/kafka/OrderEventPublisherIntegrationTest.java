@@ -59,7 +59,7 @@ class OrderEventPublisherIntegrationTest {
 
     private static final Long USER_ID = 1L;
     private static final String USER_EMAIL = "user@test.com";
-    private static final String TOPIC = "order-events";
+    private static final String TOPIC = OrderEventPublisher.TOPIC;
 
     static final WireMockServer wireMockServer;
 
@@ -135,14 +135,12 @@ class OrderEventPublisherIntegrationTest {
     }
 
     private ConsumerRecord<String, String> pollOne() {
-        long deadline = System.currentTimeMillis() + Duration.ofSeconds(10).toMillis();
-        while (System.currentTimeMillis() < deadline) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
-            if (!records.isEmpty()) {
-                return records.iterator().next();
-            }
-        }
-        throw new AssertionError("No record received on topic " + TOPIC + " within timeout");
+        ConsumerRecords<String, String>[] holder = new ConsumerRecords[1];
+        await().atMost(Duration.ofSeconds(10)).until(() -> {
+            holder[0] = consumer.poll(Duration.ofMillis(500));
+            return !holder[0].isEmpty();
+        });
+        return holder[0].iterator().next();
     }
 
     @Test

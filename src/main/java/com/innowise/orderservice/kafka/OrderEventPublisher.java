@@ -22,21 +22,17 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 public class OrderEventPublisher {
 
-    private static final String TOPIC = "order-events";
+    static final String TOPIC = "order-events";
 
     private final KafkaTemplate<String, CreateOrderEvent> kafkaTemplate;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderCreated(CreateOrderEvent event) {
-        try {
-            kafkaTemplate.send(TOPIC, event.orderId(), event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.warn("Failed to publish CREATE_ORDER for orderId={}", event.orderId(), ex);
-                        }
-                    });
-        } catch (Exception ex) {
-            log.warn("Failed to publish CREATE_ORDER for orderId={}", event.orderId(), ex);
-        }
+        kafkaTemplate.send(TOPIC, event.orderId(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.warn("Failed to publish CREATE_ORDER for orderId={}", event.orderId(), ex);
+                    }
+                });
     }
 }
