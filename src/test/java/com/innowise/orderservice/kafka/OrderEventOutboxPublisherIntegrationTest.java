@@ -46,20 +46,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the Order-side of the {@code CREATE_ORDER} contract (FIX-03/FIX-01): a successful
- * order creation publishes exactly one event to {@code order-events} after the transaction
- * commits, and a rolled-back creation (unknown item) publishes nothing.
+ * Verifies the Order-side of the {@code CREATE_ORDER} contract end to end through the
+ * transactional outbox (FIX-01): a successful order creation writes an outbox row in the same
+ * transaction as the order, and {@link OrderEventOutboxPublisher} drains it to {@code order-events}
+ * on its next poll tick; a rolled-back creation (unknown item) writes no outbox row and therefore
+ * publishes nothing.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 @StubJwksUri
-class OrderEventPublisherIntegrationTest {
+class OrderEventOutboxPublisherIntegrationTest {
 
     private static final Long USER_ID = 1L;
     private static final String USER_EMAIL = "user@test.com";
-    private static final String TOPIC = OrderEventPublisher.TOPIC;
+    private static final String TOPIC = "order-events";
 
     static final WireMockServer wireMockServer;
 
@@ -74,8 +76,9 @@ class OrderEventPublisherIntegrationTest {
     }
 
     @DynamicPropertySource
-    static void overrideUserServiceUrl(DynamicPropertyRegistry registry) {
+    static void overrideProperties(DynamicPropertyRegistry registry) {
         registry.add("user-service.url", () -> "http://localhost:" + wireMockServer.port());
+        registry.add("order.outbox.poll-interval-ms", () -> "200");
     }
 
     @Autowired
@@ -97,7 +100,7 @@ class OrderEventPublisherIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate.execute("TRUNCATE TABLE order_items, orders, items RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE order_items, orders, items, order_outbox_events RESTART IDENTITY CASCADE");
         wireMockServer.resetAll();
 
         Properties props = new Properties();
@@ -144,7 +147,7 @@ class OrderEventPublisherIntegrationTest {
     }
 
     @Test
-    void createOrder_publishesCreateOrderEvent() throws Exception {
+    void createOrder_publishesCreateOrderEventViaOutbox() throws Exception {
         Item item = new Item();
         item.setName("Widget");
         item.setPrice(new BigDecimal("15.00"));

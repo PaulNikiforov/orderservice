@@ -1,4 +1,7 @@
 package com.innowise.orderservice.kafka;
 
-public record PaymentCompletedEvent(String orderId, PaymentStatus status) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record PaymentCompletedEvent(@NotBlank String orderId, @NotNull PaymentStatus status) {
 }

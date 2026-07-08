@@ -5,9 +5,13 @@ import com.innowise.orderservice.TestcontainersConfiguration;
 import com.innowise.orderservice.model.Order;
 import com.innowise.orderservice.model.OrderStatus;
 import com.innowise.orderservice.repository.OrderRepository;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,11 +20,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.kafka.KafkaContainer;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,5 +124,52 @@ class PaymentEventListenerIntegrationTest {
                         .get()
                         .extracting(Order::getStatus)
                         .isEqualTo(OrderStatus.PAID));
+    }
+
+    /**
+     * Verifies FIX-01's DLQ wiring: an event failing bean validation (blank {@code orderId}) is
+     * retried per {@code KafkaConsumerConfig}'s backoff, then dead-lettered instead of being
+     * silently dropped. The default {@link org.springframework.kafka.listener.DeadLetterPublishingRecoverer}
+     * topic suffix is {@code -dlt}, not {@code .DLT} — confirmed empirically on paymentservice's
+     * equivalent fix, not assumed.
+     */
+    @Test
+    void invalidPaymentEvent_isSentToDeadLetterTopicWithoutChangingOrder() throws Exception {
+        Order order = new Order();
+        order.setUserEmail("dlt-test@test.com");
+        order.setStatus(OrderStatus.PENDING);
+        order.setTotalPrice(new BigDecimal("10.00"));
+        order.setDeleted(false);
+        Long orderId = orderRepository.save(order).getId();
+
+        String recordKey = "invalid-1";
+        String malformedJson = """
+                {"orderId":"","status":"SUCCESS"}
+                """;
+
+        producer.send(new ProducerRecord<>("payment-events", recordKey, malformedJson)).get();
+        producer.flush();
+
+        try (Consumer<String, String> dltConsumer = createDeadLetterConsumer()) {
+            dltConsumer.subscribe(List.of("payment-events-dlt"));
+            ConsumerRecord<String, String> deadLettered =
+                    KafkaTestUtils.getSingleRecord(dltConsumer, "payment-events-dlt", Duration.ofSeconds(40));
+            assertThat(deadLettered.key()).isEqualTo(recordKey);
+        }
+
+        assertThat(orderRepository.findById(orderId))
+                .isPresent()
+                .get()
+                .extracting(Order::getStatus)
+                .isEqualTo(OrderStatus.PENDING);
+    }
+
+    private Consumer<String, String> createDeadLetterConsumer() {
+        Map<String, Object> props = KafkaTestUtils.consumerProps(
+                kafkaContainer.getBootstrapServers(), "payment-event-listener-test-dlt", "true");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return new DefaultKafkaConsumerFactory<String, String>(props).createConsumer();
     }
 }
