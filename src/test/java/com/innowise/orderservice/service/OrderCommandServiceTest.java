@@ -5,6 +5,7 @@ import com.innowise.orderservice.exception.ItemNotFoundException;
 import com.innowise.orderservice.exception.OrderAccessDeniedException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
 import com.innowise.orderservice.exception.UserServiceUnavailableException;
+import com.innowise.orderservice.kafka.CreateOrderEvent;
 import com.innowise.orderservice.mapper.OrderMapper;
 import com.innowise.orderservice.model.Item;
 import com.innowise.orderservice.model.Order;
@@ -23,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -49,6 +51,9 @@ class OrderCommandServiceTest {
     @Mock
     private UserServiceClient userServiceClient;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private OrderCommandServiceImpl orderService;
 
@@ -64,7 +69,11 @@ class OrderCommandServiceTest {
     void create_savesOrderWithCorrectTotalPrice() {
         Item item = item(1L, new BigDecimal("10.00"));
         when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
-        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(orderRepository.save(any())).thenAnswer(inv -> {
+            Order saved = inv.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
 
         var request = new CreateOrderRequest(List.of(new OrderItemRequest(1L, 3)));
         orderService.create(request, 42L);
@@ -78,7 +87,11 @@ class OrderCommandServiceTest {
     void create_setsStatusPending() {
         Item item = item(1L, new BigDecimal("5.00"));
         when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
-        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(orderRepository.save(any())).thenAnswer(inv -> {
+            Order saved = inv.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
 
         orderService.create(new CreateOrderRequest(List.of(new OrderItemRequest(1L, 1))), 42L);
 
@@ -91,7 +104,11 @@ class OrderCommandServiceTest {
     void create_setsUserEmail() {
         Item item = item(1L, new BigDecimal("5.00"));
         when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
-        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(orderRepository.save(any())).thenAnswer(inv -> {
+            Order saved = inv.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
         when(userServiceClient.getUserById(42L)).thenReturn(new UserDto(42L, "alice@test.com", "Alice", "A"));
 
         orderService.create(new CreateOrderRequest(List.of(new OrderItemRequest(1L, 1))), 42L);
@@ -112,11 +129,45 @@ class OrderCommandServiceTest {
     }
 
     @Test
+    void create_publishesCreateOrderEvent_afterSave() {
+        Item item = item(1L, new BigDecimal("10.00"));
+        when(itemRepository.findAllById(List.of(1L))).thenReturn(List.of(item));
+        when(orderRepository.save(any())).thenAnswer(inv -> {
+            Order saved = inv.getArgument(0);
+            saved.setId(7L);
+            return saved;
+        });
+
+        orderService.create(new CreateOrderRequest(List.of(new OrderItemRequest(1L, 3))), 42L);
+
+        ArgumentCaptor<CreateOrderEvent> captor = ArgumentCaptor.forClass(CreateOrderEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().orderId()).isEqualTo("7");
+        assertThat(captor.getValue().userId()).isEqualTo("42");
+        assertThat(captor.getValue().amount()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
+    void create_doesNotPublishEvent_whenItemNotFound() {
+        when(itemRepository.findAllById(List.of(99L))).thenReturn(List.of());
+
+        var request = new CreateOrderRequest(List.of(new OrderItemRequest(99L, 1)));
+        assertThatThrownBy(() -> orderService.create(request, 42L))
+                .isInstanceOf(ItemNotFoundException.class);
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     void create_createsOrderItemsForEachRequest() {
         Item item1 = item(1L, new BigDecimal("10.00"));
         Item item2 = item(2L, new BigDecimal("20.00"));
         when(itemRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(item1, item2));
-        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(orderRepository.save(any())).thenAnswer(inv -> {
+            Order saved = inv.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
 
         var request = new CreateOrderRequest(List.of(
                 new OrderItemRequest(1L, 2),

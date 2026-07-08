@@ -39,6 +39,9 @@ spring:
         spring.json.trusted.packages: com.innowise.orderservice.kafka
         spring.json.value.default.type: com.innowise.orderservice.kafka.PaymentCompletedEvent
         spring.json.use.type.headers: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 management:
   endpoints:

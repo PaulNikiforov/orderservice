@@ -4,6 +4,7 @@ import com.innowise.orderservice.client.UserServiceClient;
 import com.innowise.orderservice.exception.ItemNotFoundException;
 import com.innowise.orderservice.exception.OrderAccessDeniedException;
 import com.innowise.orderservice.exception.OrderNotFoundException;
+import com.innowise.orderservice.kafka.CreateOrderEvent;
 import com.innowise.orderservice.mapper.OrderMapper;
 import com.innowise.orderservice.model.Item;
 import com.innowise.orderservice.model.Order;
@@ -17,6 +18,7 @@ import com.innowise.orderservice.repository.ItemRepository;
 import com.innowise.orderservice.repository.OrderRepository;
 import com.innowise.orderservice.service.OrderCommandService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     private final ItemRepository itemRepository;
     private final OrderMapper orderMapper;
     private final UserServiceClient userServiceClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -62,6 +65,8 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         order.setTotalPrice(totalPrice);
         Order saved = orderRepository.save(order);
+        eventPublisher.publishEvent(new CreateOrderEvent(
+                saved.getId().toString(), callerUserId.toString(), saved.getTotalPrice()));
         return toOrderWithUserDto(saved);
     }
 
