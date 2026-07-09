@@ -10,26 +10,17 @@ import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
-/**
- * {@link PaymentCompletedEvent}'s bean-validation constraints are checked explicitly against the
- * injected {@link Validator} rather than via {@code @Validated}/{@code @Valid} on the listener
- * method: method-level validation relies on a CGLIB proxy intercepting the call, and
- * {@code @KafkaListener} invocation ordering does not reliably go through that proxy, so the
- * constraint would silently never fire (confirmed in practice on paymentservice's
- * {@code OrderEventListener}, FIX-01). A violation throws
- * {@link jakarta.validation.ConstraintViolationException}, which {@link
- * com.innowise.orderservice.config.KafkaConsumerConfig}'s error handler treats the same as any
- * other processing failure (bounded retry, then DLT).
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentEventListener {
 
+    static final String TOPIC = "payment-events";
+
     private final PaymentEventHandler paymentEventHandler;
     private final Validator validator;
 
-    @KafkaListener(topics = "payment-events", groupId = "orderservice")
+    @KafkaListener(topics = TOPIC, groupId = "orderservice")
     public void listen(PaymentCompletedEvent event) {
         try {
             Set<ConstraintViolation<PaymentCompletedEvent>> violations = validator.validate(event);

@@ -14,23 +14,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Scheduled publisher that drains the outbox: it polls {@code order_outbox_events} rows not yet
- * published and sends a {@link CreateOrderEvent} to Kafka for each, marking {@code published=true}
- * only after a confirmed successful send.
- *
- * <p>This is the only place in the codebase allowed to call {@link KafkaTemplate} for
- * {@code order-events}, replacing the former {@code AFTER_COMMIT} fire-and-forget
- * {@code OrderEventPublisher} (FIX-01). The publish-then-mark ordering in
- * {@link #publishOne(OrderOutboxEvent)} is the entire point of the pattern — do not refactor it: a
- * duplicate send (sent but not marked) is harmless because paymentservice's consumer is idempotent
- * by {@code orderId}, but a missed send (marked without sending) loses the event forever.
- */
 @Slf4j
 @Component
 public class OrderEventOutboxPublisher {
 
-    private static final String TOPIC = "order-events";
+    static final String TOPIC = "order-events";
     private static final long SEND_TIMEOUT_MS = 5000;
 
     private final OrderOutboxRepository orderOutboxRepository;

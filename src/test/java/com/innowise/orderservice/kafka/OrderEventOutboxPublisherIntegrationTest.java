@@ -45,13 +45,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Verifies the Order-side of the {@code CREATE_ORDER} contract end to end through the
- * transactional outbox (FIX-01): a successful order creation writes an outbox row in the same
- * transaction as the order, and {@link OrderEventOutboxPublisher} drains it to {@code order-events}
- * on its next poll tick; a rolled-back creation (unknown item) writes no outbox row and therefore
- * publishes nothing.
- */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -61,7 +54,7 @@ class OrderEventOutboxPublisherIntegrationTest {
 
     private static final Long USER_ID = 1L;
     private static final String USER_EMAIL = "user@test.com";
-    private static final String TOPIC = "order-events";
+    private static final String TOPIC = OrderEventOutboxPublisher.TOPIC;
 
     static final WireMockServer wireMockServer;
 
@@ -111,6 +104,8 @@ class OrderEventOutboxPublisherIntegrationTest {
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(TOPIC));
+        consumer.poll(Duration.ZERO);
+        consumer.seekToEnd(consumer.assignment());
     }
 
     @AfterEach

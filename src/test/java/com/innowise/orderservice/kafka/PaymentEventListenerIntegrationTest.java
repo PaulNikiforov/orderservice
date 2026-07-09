@@ -34,33 +34,15 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-/**
- * Integration test for the {@code payment-events} Kafka consumer, using a real Testcontainers
- * broker end to end.
- *
- * <p><b>Known coverage gap (not fixed by this test):</b> the JSON below is hand-written to match
- * paymentservice's {@code event.PaymentCompletedEvent} record ({@code orderId}, {@code status})
- * and its producer config ({@code paymentservice/src/main/resources/application.yaml}:
- * {@code spring.kafka.producer.value-serializer=JsonSerializer}) — it is <b>not</b> generated
- * from paymentservice's real producer. There is no Spring Cloud Contract (or other) automated
- * check tying the two together: if paymentservice renames a field, changes its serializer
- * settings, or paymentservice's own round-trip test
- * ({@code paymentservice/src/test/java/com/innowise/paymentservice/PaymentFullFlowTest#createThenResolve_publishesPaymentEventToKafka})
- * changes the payload shape, this JSON literal must be updated here by hand — nothing will fail
- * automatically. See {@code test-coverage-fix-plan-2026-07-05.md} (P2, option B) for the
- * rationale for accepting this as a documented manual link rather than building a full
- * Spring Cloud Contract messaging setup for a plain {@code spring-kafka} (non-Stream) producer.
- */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 @StubJwksUri
 class PaymentEventListenerIntegrationTest {
 
-    /**
-     * Mirrors paymentservice's {@code event.PaymentCompletedEvent} shape — see the class javadoc
-     * for why this is a manually-maintained link rather than an automated contract.
-     */
+    private static final String TOPIC = PaymentEventListener.TOPIC;
+    private static final String DLT_TOPIC = TOPIC + "-dlt";
+
     private static final String PAYMENT_COMPLETED_EVENT_JSON = """
             {"orderId":"%s","status":"SUCCESS"}
             """;
@@ -105,7 +87,7 @@ class PaymentEventListenerIntegrationTest {
 
         String json = PAYMENT_COMPLETED_EVENT_JSON.formatted(orderId);
 
-        producer.send(new ProducerRecord<>("payment-events", null, json)).get();
+        producer.send(new ProducerRecord<>(TOPIC, null, json)).get();
         producer.flush();
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
@@ -115,7 +97,7 @@ class PaymentEventListenerIntegrationTest {
                         .extracting(Order::getStatus)
                         .isEqualTo(OrderStatus.PAID));
 
-        producer.send(new ProducerRecord<>("payment-events", null, json)).get();
+        producer.send(new ProducerRecord<>(TOPIC, null, json)).get();
         producer.flush();
 
         await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(10)).untilAsserted(() ->
@@ -126,13 +108,6 @@ class PaymentEventListenerIntegrationTest {
                         .isEqualTo(OrderStatus.PAID));
     }
 
-    /**
-     * Verifies FIX-01's DLQ wiring: an event failing bean validation (blank {@code orderId}) is
-     * retried per {@code KafkaConsumerConfig}'s backoff, then dead-lettered instead of being
-     * silently dropped. The default {@link org.springframework.kafka.listener.DeadLetterPublishingRecoverer}
-     * topic suffix is {@code -dlt}, not {@code .DLT} — confirmed empirically on paymentservice's
-     * equivalent fix, not assumed.
-     */
     @Test
     void invalidPaymentEvent_isSentToDeadLetterTopicWithoutChangingOrder() throws Exception {
         Order order = new Order();
@@ -147,13 +122,13 @@ class PaymentEventListenerIntegrationTest {
                 {"orderId":"","status":"SUCCESS"}
                 """;
 
-        producer.send(new ProducerRecord<>("payment-events", recordKey, malformedJson)).get();
+        producer.send(new ProducerRecord<>(TOPIC, recordKey, malformedJson)).get();
         producer.flush();
 
         try (Consumer<String, String> dltConsumer = createDeadLetterConsumer()) {
-            dltConsumer.subscribe(List.of("payment-events-dlt"));
+            dltConsumer.subscribe(List.of(DLT_TOPIC));
             ConsumerRecord<String, String> deadLettered =
-                    KafkaTestUtils.getSingleRecord(dltConsumer, "payment-events-dlt", Duration.ofSeconds(40));
+                    KafkaTestUtils.getSingleRecord(dltConsumer, DLT_TOPIC, Duration.ofSeconds(40));
             assertThat(deadLettered.key()).isEqualTo(recordKey);
         }
 

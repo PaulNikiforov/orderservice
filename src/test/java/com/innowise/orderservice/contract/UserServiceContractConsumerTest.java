@@ -14,14 +14,6 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SCC consumer-side contract test for orderservice → user-service interaction.
- *
- * <p>Stub Runner loads the userservice stub JAR from local Maven ({@code ~/.m2}) and starts
- * WireMock on port 8484 with the mappings generated from userservice's contracts. The test
- * verifies that {@link UserServiceClient} correctly handles those contract-derived responses,
- * including the circuit-breaker fallback path on 404.
- */
 @SpringBootTest(
         properties = {"user-service.url=http://localhost:8484"}
 )

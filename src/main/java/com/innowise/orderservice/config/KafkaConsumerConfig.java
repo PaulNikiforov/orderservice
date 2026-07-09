@@ -9,19 +9,6 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 
-/**
- * Resilience policy for {@code @KafkaListener} consumers: a bounded exponential backoff, then a
- * dead-letter publish instead of the container's default behavior of committing the offset and
- * silently dropping a permanently-failing record. Applies to both deserialization failures
- * (surfaced by {@code ErrorHandlingDeserializer}, configured in {@code application.yaml}) and
- * exceptions thrown from listener methods — this is the sole safety net for
- * {@link com.innowise.orderservice.kafka.PaymentEventListener} (FIX-01). Mirrors paymentservice's
- * {@code config.KafkaConsumerConfig}.
- *
- * <p>Declaring a {@link CommonErrorHandler} bean is picked up automatically by Spring Boot's
- * auto-configured {@code ConcurrentKafkaListenerContainerFactory} — no factory customization
- * needed.
- */
 @Configuration
 public class KafkaConsumerConfig {
 

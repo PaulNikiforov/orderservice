@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class OrderEventOutboxPublisherTest {
 
-    private static final String TOPIC = "order-events";
+    private static final String TOPIC = OrderEventOutboxPublisher.TOPIC;
 
     @Mock
     private OrderOutboxRepository orderOutboxRepository;

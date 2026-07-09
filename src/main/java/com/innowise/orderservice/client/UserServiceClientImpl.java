@@ -5,6 +5,9 @@ import com.innowise.orderservice.model.dto.UserDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -35,11 +38,25 @@ public class UserServiceClientImpl implements UserServiceClient {
         try {
             return restClient.get()
                     .uri("/api/v1/users/{id}", id)
+                    .headers(headers -> {
+                        String token = currentCallerToken();
+                        if (token != null) {
+                            headers.setBearerAuth(token);
+                        }
+                    })
                     .retrieve()
                     .body(UserDto.class);
         } catch (HttpClientErrorException.NotFound e) {
             return null;
         }
+    }
+
+    private static String currentCallerToken() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth.getToken().getTokenValue();
+        }
+        return null;
     }
 
     UserDto fallback(String email, Throwable t) {

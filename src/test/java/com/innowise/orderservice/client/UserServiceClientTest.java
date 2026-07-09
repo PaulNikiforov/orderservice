@@ -9,14 +9,20 @@ import com.innowise.orderservice.model.dto.UserDto;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+
+import java.time.Instant;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +61,22 @@ class UserServiceClientTest {
     void resetWireMock() {
         wireMockServer.resetAll();
         circuitBreakerRegistry.circuitBreaker("userService").reset();
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private static void authenticateAs(String tokenValue) {
+        Jwt jwt = Jwt.withTokenValue(tokenValue)
+                .header("alg", "RS256")
+                .claim("sub", "1")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
     }
 
     @Test
@@ -157,5 +179,56 @@ class UserServiceClientTest {
 
         assertThatThrownBy(() -> client.getUserById(1L))
                 .isInstanceOf(com.innowise.orderservice.exception.UserServiceUnavailableException.class);
+    }
+
+    @Test
+    void getUserById_sendsAuthorizationHeader_whenCallerAuthenticated() {
+        authenticateAs("caller-token");
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/1"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"id":1,"email":"test@test.com","name":"John","surname":"Doe"}
+                                """)));
+
+        client.getUserById(1L);
+
+        wireMockServer.verify(getRequestedFor(urlPathEqualTo("/api/v1/users/1"))
+                .withHeader("Authorization", equalTo("Bearer caller-token")));
+    }
+
+    @Test
+    void getUserById_omitsAuthorizationHeader_whenNoAuthenticationPresent() {
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/1"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"id":1,"email":"test@test.com","name":"John","surname":"Doe"}
+                                """)));
+
+        client.getUserById(1L);
+
+        wireMockServer.verify(0, getRequestedFor(urlPathEqualTo("/api/v1/users/1"))
+                .withHeader("Authorization", matching(".*")));
+    }
+
+    @Test
+    void getUserByEmail_omitsAuthorizationHeader_evenWhenCallerAuthenticated() {
+        authenticateAs("caller-token");
+        wireMockServer.stubFor(get(urlPathEqualTo("/api/v1/users/by-email"))
+                .withQueryParam("email", equalTo("test@test.com"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"id":1,"email":"test@test.com","name":"John","surname":"Doe"}
+                                """)));
+
+        client.getUserByEmail("test@test.com");
+
+        wireMockServer.verify(0, getRequestedFor(urlPathEqualTo("/api/v1/users/by-email"))
+                .withHeader("Authorization", matching(".*")));
     }
 }
