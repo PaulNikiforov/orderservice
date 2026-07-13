@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -342,7 +343,7 @@ class OrderIntegrationTest {
     @Test
     void getAll_filtersByDateRange() throws Exception {
         stubAnyUser();
-        LocalDateTime baseTime = LocalDateTime.of(2026, 6, 1, 12, 0, 0);
+        LocalDateTime baseTime = LocalDateTime.of(2026, Month.JUNE, 1, 12, 0, 0);
         Long oldOrderId = persistOrder(USER_EMAIL, OrderStatus.PENDING);
         Long recentOrderId = persistOrder(USER_EMAIL, OrderStatus.PENDING);
 

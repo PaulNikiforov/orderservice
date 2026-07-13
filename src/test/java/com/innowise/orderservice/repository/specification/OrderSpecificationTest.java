@@ -14,11 +14,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 class OrderSpecificationTest {
 
-    private static final LocalDateTime BASE_TIME = LocalDateTime.of(2026, 6, 1, 12, 0, 0);
+    private static final LocalDateTime BASE_TIME = LocalDateTime.of(2026, Month.JUNE, 1, 12, 0, 0);
 
     @Autowired
     private OrderRepository orderRepository;
@@ -157,8 +157,8 @@ class OrderSpecificationTest {
         var filter = new OrderFilterRequest("alice@test.com", List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED), null, null);
         var found = orderRepository.findAll(OrderSpecification.fromFilter(filter));
 
-        assertThat(found).hasSize(2);
-        assertThat(found).allSatisfy(o -> assertThat(o.getUserEmail()).isEqualTo("alice@test.com"));
+        assertThat(found).hasSize(2)
+                .allSatisfy(o -> assertThat(o.getUserEmail()).isEqualTo("alice@test.com"));
         assertThat(found).extracting(Order::getStatus)
                 .containsExactlyInAnyOrder(OrderStatus.PENDING, OrderStatus.CONFIRMED);
     }

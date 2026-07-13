@@ -159,8 +159,8 @@ class OrderEventOutboxPublisherIntegrationTest {
         JsonNode created = objectMapper.readTree(body);
         String orderId = created.get("id").asText();
 
-        ConsumerRecord<String, String> record = pollOne();
-        JsonNode event = objectMapper.readTree(record.value());
+        ConsumerRecord<String, String> consumerRecord = pollOne();
+        JsonNode event = objectMapper.readTree(consumerRecord.value());
         assertThat(event.get("orderId").asText()).isEqualTo(orderId);
         assertThat(event.get("userId").asText()).isEqualTo(String.valueOf(USER_ID));
         assertThat(new BigDecimal(event.get("amount").asText())).isEqualByComparingTo("30.00");

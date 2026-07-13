@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
@@ -30,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @StubJwksUri
 class OrderControllerSecurityTest {
 
-    private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 1, 15, 12, 0, 0);
+    private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, Month.JANUARY, 15, 12, 0, 0);
 
     @Autowired
     private MockMvc mockMvc;

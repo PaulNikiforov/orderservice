@@ -186,8 +186,9 @@ class OrderQueryServiceTest {
                 .thenThrow(new UserServiceUnavailableException("down", new RuntimeException()));
 
         var filter = new OrderFilterRequest(null, List.of(), null, null);
+        var pageable = PageRequest.of(0, 10);
 
-        assertThatThrownBy(() -> orderService.getAll(filter, 5L, false, PageRequest.of(0, 10)))
+        assertThatThrownBy(() -> orderService.getAll(filter, 5L, false, pageable))
                 .isInstanceOf(UserServiceUnavailableException.class);
 
         verify(orderRepository, never()).findAll(any(Specification.class), any(PageRequest.class));

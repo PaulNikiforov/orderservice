@@ -73,7 +73,9 @@ class OrderToUserServiceClientTest {
     void getUserByEmail_pathByIdIsNeverCalled() {
         try {
             client.getUserByEmail("bob@example.com");
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // irrelevant here — only asserting the by-id path was never called
+        }
 
         wireMock.verify(0, getRequestedFor(urlPathMatching("/api/v1/users/[0-9]+")));
     }

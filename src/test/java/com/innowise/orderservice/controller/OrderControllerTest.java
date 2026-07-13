@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,7 +58,7 @@ class OrderControllerTest {
     @MockitoBean
     private OrderQueryService queryService;
 
-    private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 1, 15, 12, 0, 0);
+    private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, Month.JANUARY, 15, 12, 0, 0);
 
     private static RequestPostProcessor userJwt(String userId, String role) {
         return SecurityMockMvcRequestPostProcessors.jwt()
