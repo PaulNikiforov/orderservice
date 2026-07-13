@@ -4,13 +4,20 @@ import com.innowise.orderservice.StubJwksUri;
 import com.innowise.orderservice.TestcontainersConfiguration;
 import com.innowise.orderservice.client.UserServiceClient;
 import com.innowise.orderservice.model.dto.UserDto;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.stubrunner.spring.AutoConfigureStubRunner;
 import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +35,23 @@ class UserServiceContractConsumerTest {
 
     @Autowired
     private UserServiceClient userServiceClient;
+
+    @BeforeEach
+    void authenticateAsContractCaller() {
+        Jwt jwt = Jwt.withTokenValue("contract-test-token")
+                .header("alg", "none")
+                .subject("100")
+                .claim("role", "ADMIN")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void getUserByEmail_withExistingUser_matchesContractAndReturnsUserData() {

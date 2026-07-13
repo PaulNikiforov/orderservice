@@ -67,4 +67,4 @@ databaseChangeLog:
       author: dev
       changes:
         - sql:
-            sql: SELECT setval('items_id_seq', 50, false)
+            sql: SELECT setval('items_id_seq', 100, false)
