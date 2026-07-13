@@ -1,0 +1,10 @@
+target/
+.git/
+.claude/
+.idea/
+**/*.md
+log/
+reviews/
+review/
+report/
+plan/

@@ -1,0 +1,70 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-seed-items
+      author: dev
+      changes:
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 1
+              - column:
+                  name: name
+                  value: Seed Widget
+              - column:
+                  name: price
+                  valueNumeric: 9.99
+              - column:
+                  name: created_at
+                  valueComputed: now()
+              - column:
+                  name: updated_at
+                  valueComputed: now()
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 2
+              - column:
+                  name: name
+                  value: Seed Gadget
+              - column:
+                  name: price
+                  valueNumeric: 19.99
+              - column:
+                  name: created_at
+                  valueComputed: now()
+              - column:
+                  name: updated_at
+                  valueComputed: now()
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 3
+              - column:
+                  name: name
+                  value: Seed Gizmo
+              - column:
+                  name: price
+                  valueNumeric: 49.50
+              - column:
+                  name: created_at
+                  valueComputed: now()
+              - column:
+                  name: updated_at
+                  valueComputed: now()
+      rollback:
+        - delete:
+            tableName: items
+            where: id IN (1, 2, 3)
+
+  - changeSet:
+      id: 010-advance-items-sequence
+      author: dev
+      changes:
+        - sql:
+            sql: SELECT setval('items_id_seq', 100, false)

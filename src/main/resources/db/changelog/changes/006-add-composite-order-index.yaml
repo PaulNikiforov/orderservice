@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-replace-user-id-index-with-composite
+      author: dev
+      changes:
+        - dropIndex:
+            tableName: orders
+            indexName: idx_orders_user_id
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_user_id_status
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: status
+      rollback:
+        - dropIndex:
+            tableName: orders
+            indexName: idx_orders_user_id_status
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_user_id
+            columns:
+              - column:
+                  name: user_id

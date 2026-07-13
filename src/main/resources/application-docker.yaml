@@ -1,0 +1,14 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_JWKS_URI:http://authservice:8081/oauth2/jwks}
+
+server:
+  port: 8082
+
+user-service:
+  url: ${USER_SERVICE_URL:http://userservice:8080}
